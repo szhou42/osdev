@@ -114,27 +114,47 @@ int kmain(multiboot_info_t * mb_info) {
 
 #if 1
     compositor_init();
-    window_t * red_w = window_create(get_super_window(), 300, 300, 400, 400, WINDOW_NORMAL, "window_red");
-    window_add_headline(red_w, "red window");
+
+    // Terminal
+    window_t * red_w = window_create(get_super_window(), 20, 300, 750, 450, WINDOW_NORMAL, "window_black");
+    window_add_headline(red_w, "black window");
     window_add_close_button(red_w);
     window_add_minimize_button(red_w);
     window_add_maximize_button(red_w);
+    canvas_t canvas_red = canvas_create(red_w->width, red_w->height, red_w->frame_buffer);
+    draw_text(&canvas_red, "Terminal", 1, 42);
 
-    window_t * green_w = window_create(get_super_window(), 100, 100, 400, 400, WINDOW_NORMAL, "window_green");
-    window_add_headline(green_w, "green window");
+    // File Browser
+    window_t * green_w = window_create(get_super_window(), 100, 100, 400, 400, WINDOW_NORMAL, "window_classic");
+    window_add_headline(green_w, "classic");
     window_add_close_button(green_w);
     window_add_minimize_button(green_w);
     window_add_maximize_button(green_w);
+    canvas_t canvas_green = canvas_create(green_w->width, green_w->height, green_w->frame_buffer);
+    set_font_color(VESA_COLOR_GREEN);
+    draw_text(&canvas_green, "File browser", 1, 19);
 
+
+    // Web browser
     window_t * blue_w =window_create(get_super_window(), 600, 100, 400, 400, WINDOW_NORMAL, "window_blue");
-    window_add_headline(blue_w, "blue window");
+    window_add_headline(blue_w, "classic");
     window_add_close_button(blue_w);
     window_add_minimize_button(blue_w);
     window_add_maximize_button(blue_w);
+    canvas_t canvas_blue = canvas_create(blue_w->width, blue_w->height, blue_w->frame_buffer);
+    set_font_color(VESA_COLOR_BLUE);
+    draw_text(&canvas_blue, "Web Browser", 1, 19);
+    window_t * web_button = window_create(blue_w, 30, 30, 60, 30, WINDOW_CONTROL, "window_xp");
+    canvas_t canvas_button = canvas_create(web_button->width, web_button->height, web_button->frame_buffer);
+    draw_text(&canvas_button, "Button", 1, 1);
 
+
+
+    // Top desktop bar
     window_create(get_super_window(), 0, 0, 1024, 25, WINDOW_NORMAL, "desktop_bar");
+
     display_all_window();
-    show_character((void*)screen, VESA_COLOR_WHITE);
+
     mouse_init();
 #endif
 

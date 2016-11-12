@@ -62,6 +62,7 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
     strcpy(w->name, name);
     w->under_windows = list_create();
     w->above_windows = list_create();
+    // A window's x and y coordinates should be relative to its parent(when interpreting x/y value of a window)
     w->x = x;
     w->y = y;
     w->width = width;
@@ -79,6 +80,12 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
             memsetdw(w->frame_buffer, 0x0000ff00, width * height);
         else if(strcmp(name, "window_blue") == 0)
             memsetdw(w->frame_buffer, 0x000000ff, width * height);
+        else if(strcmp(name, "window_black") == 0)
+            memsetdw(w->frame_buffer, 0x00000001, width * height);
+        else if(strcmp(name, "window_classic") == 0)
+            memsetdw(w->frame_buffer, 0x00FBFBF9, width * height);
+        else if(strcmp(name, "window_xp") == 0)
+            memsetdw(w->frame_buffer, 0x00F7F3F0, width * height);
         else if(strcmp(name, "desktop_bar") == 0)
             memsetdw(w->frame_buffer, 0x00DCE8EC , width * height);
 
@@ -184,31 +191,20 @@ void window_display(window_t * w) {
 
     // If the frame buffer is not null, also draw the frame buffer
     if(w->frame_buffer) {
-
         rect_region_t rect_reg;
         rect_reg.r.x = w->x;
         rect_reg.r.y = w->y;
+        // Calculate the canonical xy coords
+        window_t * runner = w->parent;
+        while(runner != NULL) {
+            rect_reg.r.x += runner->x;
+            rect_reg.r.y += runner->y;
+            runner = runner->parent;
+        }
         rect_reg.r.width = w->width;
         rect_reg.r.height = w->height;
         rect_reg.region = w->frame_buffer;
         draw_rect_pixels(&canvas, &rect_reg);
-    }
-    else {
-        // The horizontal line, starting from (w->x, w->y) to (w->x + w->width - 1, w->y)
-        draw_line(&canvas, w->x, w->y, w->x + w->width - 1, w->y);
-
-        // The left line, starting from (w->x, w->y) to (w->x, w->y + w->height - 1)
-        draw_line(&canvas, w->x, w->y, w->x, w->y + w->height - 1);
-
-        // The right line, starting from (w->x + w->width - 1, w->y) to (w->x + w->width - 1, w->y + w->height - 1)
-        draw_line(&canvas, w->x + w->width - 1, w->y, w->x + w->width - 1, w->y + w->height - 1);
-
-        // The bottom line, starting from (w->x, w->y + w->height - 1) to (w->x + w->width - 1, w->y + w->height - 1)
-        draw_line(&canvas, w->x, w->y + w->height - 1, w->x + w->width - 1, w->y + w->height - 1);
-
-        // Fill rect
-        set_fill_color(w->fill_color);
-        draw_rect(&canvas, w->x + 1, w->y + 1, w->width - 2, w->height - 2);
     }
 }
 
@@ -330,7 +326,7 @@ window_t * query_window_by_point(int x, int y) {
         }
 
     }
-   return top_window;
+    return top_window;
 }
 
 
@@ -390,7 +386,19 @@ int is_point_in_rect(int point_x, int point_y, rect_t * r) {
 }
 
 int is_point_in_window(int x, int y, window_t * w) {
-    return (x >= w->x && x < w->x + w->width) && (y >= w->y && y < w->y + w->height);
+    rect_t r;
+    r.x = w->x;
+    r.y = w->y;
+    // Calculate the canonical xy coords
+    window_t * runner = w->parent;
+    while(runner != NULL) {
+        r.x += runner->x;
+        r.y += runner->y;
+        runner = runner->parent;
+    }
+    r.width = w->width;
+    r.height = w->height;
+    return is_point_in_rect(x, y, &r);
 }
 
 

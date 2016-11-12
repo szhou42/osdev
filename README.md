@@ -83,7 +83,7 @@ Now clone the repo to your vm and simply run ./compile.sh to compile the kernel,
 #### Graphical Interface  
 &#160; &#160; &#160; &#160;0 vesa driver, 1024 * 768 color(32-bit color)，framebuffer mode                                              [✔]  
 &#160; &#160; &#160; &#160;1 Milestone(try loading and showing a wallpaper from hardisk!)                                               [✔]  
-&#160; &#160; &#160; &#160;2 Windows compositor, windows, button, textbox, labels, event-driven, support fonts, optimize GUI speed      [In Progress]  
+&#160; &#160; &#160; &#160;2 Windows compositor, support fonts, optimize GUI speed      [In Progress]  
 &#160; &#160; &#160; &#160;3 Write a shell                                                                                              []  
 &#160; &#160; &#160; &#160;4 Write a file manager                                                                                       []  
 
