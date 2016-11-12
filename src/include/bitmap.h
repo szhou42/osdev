@@ -49,4 +49,6 @@ void bitmap_display(bitmap_t * bmp);
 
 void bitmap_to_framebuffer(bitmap_t * bmp, uint32_t * frame_buffer);
 
+void bitmap_to_framebuffer2(bitmap_t * bmp, uint32_t * frame_buffer);
+
 #endif

@@ -2,6 +2,13 @@
 #include <math.h>
 #include <compositor.h>
 
+/*
+ * A simple drawing library, I will add more drawing algorithm as we need it
+ * The drawing library should not assume any information about the canvas(framebuffer) it is going to draw on, ideally
+ * but again, this is a toy os, so we will assume the canvas use 4 byte to represent a color, and the color format is argb(a for alpha)
+ * however, we cannot assume that the canvas is always 1024*768, since sometime we may want to draw on the framebuffer of a window, which can be of arbitary size
+ * */
+
 // Want to draw something on screen ? write pixel to screen! Keep in mind though each pixel is 24 bit here(hard code 24-bit pixel for simplicity here).
 uint32_t * screen = NULL;
 // Default fill color
@@ -11,39 +18,39 @@ int screen_width, screen_height;
 /*
  * Given x and y, return the array index of that pixel in the linear frame buffer
  * */
-int get_pixel_idx(int x, int y) {
-    return screen_width * y + x;
+int get_pixel_idx(canvas_t * canvas, int x, int y) {
+    return canvas->width * y + x;
 }
 
-void set_pixel(uint32_t val, int x, int y) {
-    screen[get_pixel_idx(x, y)] = val;
+void set_pixel(canvas_t * canvas, uint32_t val, int x, int y) {
+    canvas->framebuffer[get_pixel_idx(canvas, x, y)] = val;
 }
 void set_fill_color(uint32_t color) {
     fill_color = color;
 }
 
-void draw_rect(int x, int y, int width, int height) {
+void draw_rect(canvas_t * canvas, int x, int y, int width, int height) {
     for(int i = y; i < y + height; i++) {
         // Draw a horizontal line for each i
         for(int j = x; j < x + width; j++) {
-            set_pixel(fill_color, j, i);
+            set_pixel(canvas, fill_color, j, i);
         }
     }
 }
 
-void draw_rect_pixels(rect_region_t * rect_region) {
+void draw_rect_pixels(canvas_t * canvas, rect_region_t * rect_region) {
     int k = 0;
 
-    for(int i = rect_region->r.y + rect_region->r.height - 1; i >= rect_region->r.y; i--) {
+    for(int i = rect_region->r.y;  i < rect_region->r.y + rect_region->r.height; i++) {
         for(int j = rect_region->r.x; j < rect_region->r.x + rect_region->r.width; j++) {
             if(rect_region->region[k] != 0x0)
-                set_pixel(rect_region->region[k], j, i);
+                set_pixel(canvas, rect_region->region[k], j, i);
             k++;
         }
     }
 }
 
-void draw_line(int x1, int y1, int x2, int y2)
+void draw_line(canvas_t * canvas, int x1, int y1, int x2, int y2)
 {
     int dx = x2-x1;
     int dy = y2-y1;
@@ -56,7 +63,7 @@ void draw_line(int x1, int y1, int x2, int y2)
     int px = x1;
     int py = y1;
 
-    set_pixel(fill_color, px, py);
+    set_pixel(canvas, fill_color, px, py);
     if (dxabs>=dyabs) {
         for(int i=0;i<dxabs;i++){
             y+=dyabs;
@@ -66,7 +73,7 @@ void draw_line(int x1, int y1, int x2, int y2)
                 py+=sdy;
             }
             px+=sdx;
-            set_pixel(fill_color, px, py);
+            set_pixel(canvas, fill_color, px, py);
         }
     }
     else {
@@ -79,7 +86,7 @@ void draw_line(int x1, int y1, int x2, int y2)
                 px+=sdx;
             }
             py+=sdy;
-            set_pixel(fill_color, px, py);
+            set_pixel(canvas, fill_color, px, py);
         }
     }
 }
@@ -108,4 +115,12 @@ rect_t rect_create(int x, int y, int width, int height) {
     r.width = width;
     r.height = height;
     return r;
+}
+
+canvas_t canvas_create(int width, int height, uint32_t * framebuffer) {
+    canvas_t canvas;
+    canvas.width = width;
+    canvas.height = height;
+    canvas.framebuffer = framebuffer;
+    return canvas;
 }

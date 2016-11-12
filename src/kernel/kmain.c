@@ -24,6 +24,7 @@
 #include <compositor.h>
 #include <mouse.h>
 #include <keyboard.h>
+#include <font.h>
 
 
 extern uint8_t * bitmap;
@@ -113,12 +114,30 @@ int kmain(multiboot_info_t * mb_info) {
 
 #if 1
     compositor_init();
-    window_create(get_super_window(), 300, 300, 300, 300, WINDOW_NORMAL);
-    window_t * w = window_create(get_super_window(), 100, 100, 400, 300, WINDOW_NORMAL);
-    window_t * w2 =  window_create(get_super_window(), 600, 100, 400, 300, WINDOW_NORMAL);
+    window_t * red_w = window_create(get_super_window(), 300, 300, 400, 400, WINDOW_NORMAL, "window_red");
+    window_add_headline(red_w, "red window");
+    window_add_close_button(red_w);
+    window_add_minimize_button(red_w);
+    window_add_maximize_button(red_w);
+
+    window_t * green_w = window_create(get_super_window(), 100, 100, 400, 400, WINDOW_NORMAL, "window_green");
+    window_add_headline(green_w, "green window");
+    window_add_close_button(green_w);
+    window_add_minimize_button(green_w);
+    window_add_maximize_button(green_w);
+
+    window_t * blue_w =window_create(get_super_window(), 600, 100, 400, 400, WINDOW_NORMAL, "window_blue");
+    window_add_headline(blue_w, "blue window");
+    window_add_close_button(blue_w);
+    window_add_minimize_button(blue_w);
+    window_add_maximize_button(blue_w);
+
+    window_create(get_super_window(), 0, 0, 1024, 25, WINDOW_NORMAL, "desktop_bar");
     display_all_window();
+    show_character((void*)screen, VESA_COLOR_WHITE);
     mouse_init();
 #endif
+
     printf("drawing finish");
     set_curr_color(LIGHT_RED);
 

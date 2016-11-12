@@ -16,6 +16,7 @@ list_t * list_create() {
  * Get list size
  * */
 uint32_t list_size(list_t * list) {
+    if(!list) return 0;
 	return list->size;
 }
 
@@ -40,8 +41,10 @@ void list_remove_node(list_t * list, listnode_t * node) {
  * */
 listnode_t * list_insert_front(list_t * list, void * val) {
 	listnode_t * t = kcalloc(sizeof(listnode_t), 1);
-	t->next = list->head;
+	list->head->prev = t;
+    t->next = list->head;
 	t->val = val;
+
 	// If it's the first element, then it's both head and tail
 	if(!list->head)
 		list->tail = t;
@@ -142,6 +145,38 @@ void * list_peek_front(list_t * list) {
 void * list_peek_back(list_t * list) {
 	if(!list->tail) return NULL;
 	return list->tail->val;
+}
+
+
+/*
+ * Does the list contain a value
+ * Return -1 if list element is not found
+ * */
+
+int list_contain(list_t * list, void * val) {
+    int idx = 0;
+    foreach(listnode, list) {
+        if(listnode->val == val)
+            return idx;
+        idx++;
+    }
+    return -1;
+}
+
+listnode_t * list_get_node_by_index(list_t * list, int index) {
+    if(index < 0 || index >= list_size(list))
+        return NULL;
+    int curr = 0;
+    foreach(listnode, list) {
+        if(index == curr) return listnode;
+        curr++;
+    }
+    return NULL;
+}
+
+void list_remove_by_index(list_t * list, int index) {
+    listnode_t * node = list_get_node_by_index(list, index);
+    list_remove_node(list, node);
 }
 
 void list_destroy(list_t * list) {

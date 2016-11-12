@@ -2,24 +2,87 @@
 #include <vesa.h>
 #include <math.h>
 #include <kheap.h>
+#include <string.h>
 #include <bitmap.h>
 #include <printf.h>
 #include <generic_tree.h>
-
+/*
+ *
+ *
+ *  Why not to use black color in this os ??
+ *  :( Unfortunately, a hack I used for displaying transparent-background cursor bitmap is that: I ignore all black colors, I view them as transparent color, because 0x00000000 in bmp file means
+ *   transparent, this hack is ridiculous, I will fix this!!
+ * */
 gtree_t * windows_tree;
+canvas_t canvas;
 
-window_t *  window_create(window_t * parent, int x, int y, int width, int height, int type) {
+
+/*
+ * The window needs to receive user inputs like mouse movement, keyboard keypress, and others.
+ * */
+void window_message_handler(winmsg_t * msg) {
+    window_t * w = msg->window;
+    switch(msg->msg_type) {
+        case WINMSG_MOUSE:
+            if(msg->sub_type == WINMSG_MOUSE_DOUBLECLICK) {
+                // Translate the cursor_x and cursor_y to base on the window's coord, not the screen's coord
+                int cursor_x = msg->cursor_x - msg->window->x;
+                int cursor_y = msg->cursor_y - msg->window->y;
+
+                // If the point is within the rectangle of the close button, close the window
+                rect_t r = rect_create(w->width - 22, 0, 22, 22);
+                if(is_point_in_rect(cursor_x, cursor_y, &r)) {
+                    close_window(msg->window);
+                }
+                // Maximize button
+                r.x = w->width - 44;
+                if(is_point_in_rect(cursor_x, cursor_y, &r)) {
+                    maximize_window(msg->window);
+                }
+                // Minimize button
+                r.x = w->width - 66;
+                if(is_point_in_rect(cursor_x, cursor_y, &r)) {
+                    minimize_window(msg->window);
+                }
+
+            }
+            break;
+        case WINMSG_KEYBOARD:
+
+            break;
+        default:
+            break;
+    }
+}
+
+window_t *  window_create(window_t * parent, int x, int y, int width, int height, int type, char * name) {
     gtreenode_t * subroot;
     // Allocate spae and initialize
     window_t * w = kcalloc(sizeof(window_t), 1);
+    strcpy(w->name, name);
+    w->under_windows = list_create();
+    w->above_windows = list_create();
     w->x = x;
     w->y = y;
     w->width = width;
     w->height = height;
     w->type = type;
     w->parent = parent;
+    w->is_minimized = 0;
+    w->is_maximized = 0;
+
     w->frame_buffer = kmalloc(width * height * 4);
-    //memset(w->frame_buffer, 0xff, width * height * 4);
+    if(parent != NULL) {
+        if(strcmp(name, "window_red") == 0)
+            memsetdw(w->frame_buffer, 0x00ff0000, width * height);
+        else if(strcmp(name, "window_green") == 0)
+            memsetdw(w->frame_buffer, 0x0000ff00, width * height);
+        else if(strcmp(name, "window_blue") == 0)
+            memsetdw(w->frame_buffer, 0x000000ff, width * height);
+        else if(strcmp(name, "desktop_bar") == 0)
+            memsetdw(w->frame_buffer, 0x00DCE8EC , width * height);
+
+    }
     w->fill_color = VESA_COLOR_WHITE;
     w->border_color= VESA_COLOR_BLACK;
 
@@ -40,6 +103,56 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
     add_under_windows(w);
     return w;
 }
+
+/*
+ * Below is a set of functions that add components to a window by either 1) drawing on the frame buffer of the window, or adding child window(which has its own frame buffer and relative coord)
+ * */
+
+/*
+ * Draw a headline for the window, given a headline string
+ * window headline has height = 22, hardcoded
+ * */
+void window_add_headline(window_t * w, char * headline) {
+    // Draw a rectangle at the start of the window
+    set_fill_color(0x00DCE8EC);
+    canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
+    draw_rect(&canvas, 0, 0, w->width, 22);
+    set_fill_color(0x00D3D3D3);
+    draw_line(&canvas, 0, 22, w->width, 22);
+}
+
+/*
+ * Draw a close button for headline (size is 22*22)
+ * */
+void window_add_close_button(window_t * w) {
+    set_fill_color(0x00ff0000);
+    canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
+    draw_rect(&canvas, w->width - 22, 0, 22, 22);
+}
+
+/*
+ * Draw a minimize button for headline
+ * */
+void window_add_minimize_button(window_t * w) {
+    set_fill_color(0x0000ff00);
+    canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
+    draw_rect(&canvas, w->width - 44, 0, 22, 22);
+}
+
+/*
+ * Draw a close button for headline
+ * */
+void window_add_maximize_button(window_t * w) {
+    set_fill_color(0x00ffff00);
+    canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
+    draw_rect(&canvas, w->width - 66, 0, 22, 22);
+}
+
+void window_add_childwindow(window_t * w, window_t * childw) {
+
+}
+
+
 
 void add_under_windows(window_t * w) {
     recur_add_under_windows(w, windows_tree->root);
@@ -71,30 +184,31 @@ void window_display(window_t * w) {
 
     // If the frame buffer is not null, also draw the frame buffer
     if(w->frame_buffer) {
+
         rect_region_t rect_reg;
         rect_reg.r.x = w->x;
         rect_reg.r.y = w->y;
         rect_reg.r.width = w->width;
         rect_reg.r.height = w->height;
         rect_reg.region = w->frame_buffer;
-        draw_rect_pixels(&rect_reg);
+        draw_rect_pixels(&canvas, &rect_reg);
     }
     else {
         // The horizontal line, starting from (w->x, w->y) to (w->x + w->width - 1, w->y)
-        draw_line(w->x, w->y, w->x + w->width - 1, w->y);
+        draw_line(&canvas, w->x, w->y, w->x + w->width - 1, w->y);
 
         // The left line, starting from (w->x, w->y) to (w->x, w->y + w->height - 1)
-        draw_line(w->x, w->y, w->x, w->y + w->height - 1);
+        draw_line(&canvas, w->x, w->y, w->x, w->y + w->height - 1);
 
         // The right line, starting from (w->x + w->width - 1, w->y) to (w->x + w->width - 1, w->y + w->height - 1)
-        draw_line(w->x + w->width - 1, w->y, w->x + w->width - 1, w->y + w->height - 1);
+        draw_line(&canvas, w->x + w->width - 1, w->y, w->x + w->width - 1, w->y + w->height - 1);
 
         // The bottom line, starting from (w->x, w->y + w->height - 1) to (w->x + w->width - 1, w->y + w->height - 1)
-        draw_line(w->x, w->y + w->height - 1, w->x + w->width - 1, w->y + w->height - 1);
+        draw_line(&canvas, w->x, w->y + w->height - 1, w->x + w->width - 1, w->y + w->height - 1);
 
         // Fill rect
         set_fill_color(w->fill_color);
-        draw_rect(w->x + 1, w->y + 1, w->width - 2, w->height - 2);
+        draw_rect(&canvas, w->x + 1, w->y + 1, w->width - 2, w->height - 2);
     }
 }
 
@@ -128,17 +242,54 @@ void set_window_fillcolor(window_t * w, uint32_t color) {
 }
 
 void move_window(window_t * w, int x, int y) {
+    int oldx = w->x;
+    int oldy = w->y;
+
     w->x = x;
     w->y = y;
+
+    repaint(rect_create(oldx, oldy, w->width, w->height));
+    repaint(rect_create(w->x, w->y, w->width, w->height));
 }
 
 void minimize_window(window_t * w) {
     w->is_minimized = 1;
+    repaint(rect_create(w->x, w->y, w->width, w->height));
+}
+
+void maximize_window(window_t * w) {
+    if(w->is_maximized == 1) {
+        // Restore original size
+        resize_window(w, w->original_width, w->original_height);
+        w->is_maximized = 0;
+    }
+    else {
+        // Full screen
+        w->original_width = w->width;
+        w->original_height = w->height;
+        resize_window(w, 1024, 768);
+        w->is_maximized = 1;
+    }
 }
 
 void close_window(window_t * w) {
+    int oldx = w->x;
+    int oldy = w->y;
+    int oldw = w->width;
+    int oldh = w->height;
     // Remove the window from tree
+    tree_remove(windows_tree, w->self);
+    repaint(rect_create(oldx, oldy, oldw, oldh));
+}
 
+void resize_window(window_t * w, int new_width, int new_height) {
+    int oldw = w->width;
+    int oldh = w->height;
+    w->width = new_width;
+    w->height = new_height;
+
+    repaint(rect_create(w->x, w->y, oldw, oldh));
+    repaint(rect_create(w->x, w->y, new_width, new_height));
 }
 
 /*
@@ -155,33 +306,41 @@ void copy_rect(uint32_t * dst, rect_t r) {
 }
 
 /*
- * Helper function for repaint(), paint a pixel given its (x,y)
+ * Figure out which window has the point(x,y)
  * */
-void paint_pixel(int x, int y) {
-
+window_t * query_window_by_point(int x, int y) {
     // Very Important: Do not allocate any memory here, because this function is probably going to be called 99999 times per second, you don't want to call lots of mallocs in here
     // So, we will just assume that it's impossible that there are more than 20 windows stacked together and all contain one point
     window_t * possible_windows[20];
 
     // A list of windows that are standing on this pixel
     //list_t * possible_windows = list_create();
-    find_possible_windows(x, y, windows_tree->root, possible_windows);
+    int num = 0;
+    find_possible_windows(x, y, windows_tree->root, possible_windows, &num);
     // Now, we get a list of possible windows, find which one is on top (whichever has the most children is the one on top!)
     int max_children_num = 0;
     window_t * top_window = NULL;
 
     window_t ** window_list = possible_windows;
-    while(*window_list != NULL) {
-        window_t * w = *window_list;
-        if(list_size(w->under_windows) > max_children_num) {
+    for(int i = 0; i < num; i++) {
+        window_t * w = window_list[i];
+        if(list_size(w->under_windows) >= max_children_num && w->is_minimized != 1) {
             max_children_num = list_size(w->under_windows);
             top_window = w;
         }
-        window_list++;
-    }
 
+    }
+   return top_window;
+}
+
+
+/*
+ * Helper function for repaint(), paint a pixel given its (x,y)
+ * */
+void paint_pixel(canvas_t * canvas, int x, int y) {
+    window_t * top_window = query_window_by_point(x, y);
     if(top_window != NULL) {
-        set_pixel(get_window_pixel(top_window, x, y), x, y);
+        set_pixel(canvas, get_window_pixel(top_window, x, y), x, y);
     }
 }
 
@@ -189,26 +348,28 @@ void paint_pixel(int x, int y) {
  * Given a rectangle region, repaint the pixel it should have
  * */
 void repaint(rect_t r) {
+    // This method is always called to repaint the whole screen, so canvas's frame buffer is always the screen
+    canvas_t canvas = canvas_create(1024, 768, screen);
     for(int i = r.x; i < r.x + r.width; i++) {
         for(int j = r.y; j < r.y + r.height; j++) {
-            paint_pixel(i, j);
+            paint_pixel(&canvas, i, j);
         }
     }
 }
 
 /*
  * A recursive function for finding windows that contains the point (x, y)
+ * return value num: number of possible windows
  * */
-void find_possible_windows(int x, int y, gtreenode_t * subroot, window_t ** possible_windows) {
+void find_possible_windows(int x, int y, gtreenode_t * subroot, window_t ** possible_windows, int * num) {
     window_t * curr_w = subroot->value;
 
     if(is_point_in_window(x, y, curr_w)) {
-        *possible_windows = curr_w;
-        possible_windows++;
-        *possible_windows = NULL;
+        possible_windows[*num] = curr_w;
+        (*num)++;
     }
     foreach(child, subroot->children) {
-        find_possible_windows(x, y, child->val, possible_windows);
+        find_possible_windows(x, y, child->val, possible_windows, num);
     }
 }
 
@@ -220,8 +381,12 @@ uint32_t get_window_pixel(window_t * w, int x, int y) {
     // Transform (x,y) so that it's relative to the windows's frame buffer
     x = x - w->x;
     y = y - w->y;
-    int idx = w->width * (w->height - y - 1) + x;
+    int idx = w->width * y + x;
     return w->frame_buffer[idx];
+}
+
+int is_point_in_rect(int point_x, int point_y, rect_t * r) {
+    return (point_x >= r->x && point_x < r->x + r->width) && (point_y >= r->y && point_y < r->y + r->height);
 }
 
 int is_point_in_window(int x, int y, window_t * w) {
@@ -229,25 +394,33 @@ int is_point_in_window(int x, int y, window_t * w) {
 }
 
 
-
+canvas_t * get_screen_canvas() {
+    return &canvas;
+}
 
 void compositor_init() {
     // Get linear frame buffer from vesa driver
     screen = vesa_get_lfb();
     screen_width = vesa_get_resolution_x();
     screen_height = vesa_get_resolution_y();
+    canvas = canvas_create(1024, 768, screen);
 
     // Initialize window tree to manage the windows to be created
 
     // Create a base window, this should be the parent of all windows(super window)
     windows_tree = tree_create();
-    window_t * w = window_create(NULL, 0, 0, screen_width, screen_height, WINDOW_SUPER);
+    window_t * w = window_create(NULL, 0, 0, screen_width, screen_height, WINDOW_SUPER, "desktop");
+    //window_add_headline(w, "");
     set_window_fillcolor(w, VESA_COLOR_GREEN);
 
+#if 1
     bitmap_t * wallpaper = bitmap_create("/wallpaper.bmp");
     bitmap_to_framebuffer(wallpaper, w->frame_buffer);
-    //w->frame_buffer = wallpaper->image_bytes;
-    //memsetdw(w->frame_buffer, 0x00ff00ff,1024*768);
+#endif
+
+#if 0
+    memsetdw(w->frame_buffer, 0x00ff00ff,1024*768);
+#endif
 
     // Default fill color is black
     fill_color =  (255 << 24) |(223 << 16) | (224 << 8) | 224;

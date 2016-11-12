@@ -47,4 +47,10 @@ void list_destroy(list_t * list);
 
 void listnode_destroy(listnode_t * node);
 
+int list_contain(list_t * list, void * val);
+
+listnode_t * list_get_node_by_index(list_t * list, int index);
+
+void list_remove_by_index(list_t * list, int index);
+
 #endif

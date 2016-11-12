@@ -45,7 +45,8 @@ void mouse_init() {
     // Cursoe icon
     cursor_icon = bitmap_create("/cursor.bmp");
     current_mouse_region.r = next_mouse_region.r;
-    current_mouse_region.region = (uint32_t*)cursor_icon->image_bytes;
+    //current_mouse_region.region = (uint32_t*)cursor_icon->image_bytes;
+    bitmap_to_framebuffer2(cursor_icon, current_mouse_region.region);
     // Draw the mouse
     draw_mouse();
 
@@ -82,14 +83,47 @@ void mouse_handler(register_t * regs)
     static char mouse_byte[3];
     switch(mouse_cycle)
     {
+        winmsg_t msg;
         case 0:
             mouse_byte[0] = mouse_read();
             if(MOUSE_LEFT_BUTTON(mouse_byte[0])) {
+                // Call window message handler
+                msg.msg_type = WINMSG_MOUSE;
+                msg.sub_type = WINMSG_MOUSE_LEFTCLICK;
+                msg.cursor_x = mouse_x;
+                msg.cursor_y = mouse_y;
+                msg.window = query_window_by_point(mouse_x, mouse_y);
+                window_message_handler(&msg);
+
                 printf("Your mouse's left button was clicked\n");
                 display_all_window();
             }
-            else if(MOUSE_RIGHT_BUTTON(mouse_byte[0]))
+            else if(MOUSE_RIGHT_BUTTON(mouse_byte[0])) {
                 printf("Your mouse's right button was clicked\n");
+                msg.msg_type = WINMSG_MOUSE;
+                msg.sub_type = WINMSG_MOUSE_RIGHTCLICK;
+                msg.cursor_x = mouse_x;
+                msg.cursor_y = mouse_y;
+                msg.window = query_window_by_point(mouse_x, mouse_y);
+                window_message_handler(&msg);
+
+#if 0
+                window_t * w = query_window_by_point(mouse_x, mouse_y);
+                minimize_window(w);
+#endif
+#if 0
+                window_t * w = query_window_by_point(mouse_x, mouse_y);
+                move_window(w, 50, 50);
+#endif
+#if 0
+                window_t * w = query_window_by_point(mouse_x, mouse_y);
+                close_window(w);
+#endif
+#if 0
+                window_t * w = query_window_by_point(mouse_x, mouse_y);
+                resize_window(w, 250, 250);
+#endif
+            }
             mouse_cycle++;
             break;
         case 1:
@@ -148,5 +182,5 @@ uint8_t mouse_read()
 
 void draw_mouse() {
     set_fill_color(VESA_COLOR_BLUE);
-    draw_rect_pixels(&current_mouse_region);
+    draw_rect_pixels(get_screen_canvas(), &current_mouse_region);
 }

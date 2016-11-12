@@ -2,12 +2,14 @@
 #include <system.h>
 void *memcpy(void *dst, void const *src, int n)
 {
+#if 1
     char * ret = dst;
     char * p = dst;
     const char * q = src;
     while (n--)
         *p++ = *q++;
     return ret;
+#endif
 }
 void *memset(void *dst,char val, int n)
 {

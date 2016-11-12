@@ -71,7 +71,7 @@ void bitmap_to_framebuffer(bitmap_t * bmp, uint32_t * frame_buffer) {
         // Copy the ith row of image to height - 1 - i row of frame buffer, each row is of length width * 3
         char * image_row = image + i * bmp->width * 3;
         //uint32_t * framebuffer_row = (void*)frame_buffer + (bmp->height - 1 - i) * bmp->width * 4;
-        uint32_t * framebuffer_row = (void*)frame_buffer + i * bmp->width * 4;
+        uint32_t * framebuffer_row = (void*)frame_buffer + (bmp->height - 1 - i) * bmp->width * 4;
         j = 0;
         for(int k = 0; k < bmp->width; k++) {
             uint32_t b = image_row[j++] & 0xff;
@@ -79,6 +79,28 @@ void bitmap_to_framebuffer(bitmap_t * bmp, uint32_t * frame_buffer) {
             uint32_t r = image_row[j++] & 0xff;
             uint32_t rgb = ((r << 16) | (g << 8) | (b)) & 0x00ffffff;
             rgb = rgb | 0xff000000;
+            framebuffer_row[k] = rgb;
+        }
+    }
+}
+void bitmap_to_framebuffer2(bitmap_t * bmp, uint32_t * frame_buffer) {
+    if(!bmp) return;
+    uint8_t * image = bmp->image_bytes;
+    int j = 0;
+    // Do copy
+    for(int i = 0; i < bmp->height; i++) {
+        // Copy the ith row of image to height - 1 - i row of frame buffer, each row is of length width * 3
+        char * image_row = image + i * bmp->width * 4;
+        //uint32_t * framebuffer_row = (void*)frame_buffer + (bmp->height - 1 - i) * bmp->width * 4;
+        uint32_t * framebuffer_row = (void*)frame_buffer + (bmp->height - 1 - i) * bmp->width * 4;
+        j = 0;
+        for(int k = 0; k < bmp->width; k++) {
+            uint32_t b = image_row[j++] & 0xff;
+            uint32_t g = image_row[j++] & 0xff;
+            uint32_t r = image_row[j++] & 0xff;
+            j++;
+            uint32_t rgb = ((r << 16) | (g << 8) | (b)) & 0x00ffffff;
+            rgb = rgb | 0x00000000;
             framebuffer_row[k] = rgb;
         }
     }
