@@ -158,4 +158,6 @@ point_t get_canonical_coordinates(window_t * w);
 window_t * alertbox_create(window_t * parent, int x, int y, char * title, char * text);
 
 point_t get_relative_coordinates(window_t * w, int x, int y);
+
+int is_window_overlap(window_t * w1, window_t * w2);
 #endif

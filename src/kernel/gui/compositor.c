@@ -27,7 +27,7 @@ void window_message_handler(winmsg_t * msg) {
         case WINMSG_MOUSE:
             if(msg->sub_type == WINMSG_MOUSE_RIGHTCLICK) {
                 // Do somethig when mouse right click
-
+                display_all_window();
             }
             if(msg->sub_type == WINMSG_MOUSE_LEFTCLICK) {
                 // Translate the cursor_x and cursor_y to base on the window's coord, not the screen's coord
@@ -60,7 +60,7 @@ void window_message_handler(winmsg_t * msg) {
                         window_t * alertbox = alertbox_create(w->parent, 100, 100, "Alertbox", "A button is clicked!!!");
                         window_display(alertbox);
                     }
-                    else if(strcmp("window_xp_alertbox_button", w->name) == 0){
+                    else if(strcmp("alertbox_button", w->name) == 0){
                         // Get parent and close
                         close_window(w->parent);
                     }
@@ -77,6 +77,9 @@ void window_message_handler(winmsg_t * msg) {
     }
 }
 
+/*
+* Convenient function for creating an alertbox window
+*/
 window_t * alertbox_create(window_t * parent, int x, int y, char * title, char * text) {
     window_t * alertbox = window_create(parent, x, y, 200, 160, WINDOW_ALERT, "window_classic");
     window_add_headline(alertbox, "classic");
@@ -87,7 +90,7 @@ window_t * alertbox_create(window_t * parent, int x, int y, char * title, char *
     draw_text(&canvas_alertbox, text, 5, 2);
 
     // Add a OK button for the alertbox
-    window_t * ok_button = window_create(alertbox, 30, 60, 60, 30, WINDOW_CONTROL, "window_xp_alertbox_button");
+    window_t * ok_button = window_create(alertbox, 30, 60, 110, 30, WINDOW_CONTROL, "alertbox_button");
     canvas_t canvas_button = canvas_create(ok_button->width, ok_button->height, ok_button->frame_buffer);
     draw_text(&canvas_button, "Close Button", 1, 1);
 
@@ -95,6 +98,9 @@ window_t * alertbox_create(window_t * parent, int x, int y, char * title, char *
 }
 
 
+/*
+* Window create, given x,y, width,heigt, type, name, and parent window.
+*/
 window_t *  window_create(window_t * parent, int x, int y, int width, int height, int type, char * name) {
     gtreenode_t * subroot;
     // Allocate spae and initialize
@@ -126,7 +132,7 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
             memsetdw(w->frame_buffer, 0x00FBFBF9, width * height);
         else if(strcmp(name, "window_xp") == 0)
             memsetdw(w->frame_buffer, 0x00F7F3F0, width * height);
-        else if(strcmp(name, "window_xp_alertbox_button") == 0)
+        else if(strcmp(name, "alertbox_button") == 0)
             memsetdw(w->frame_buffer, 0x00F7F3F0, width * height);
         else if(strcmp(name, "desktop_bar") == 0)
             memsetdw(w->frame_buffer, 0x00DCE8EC , width * height);
@@ -197,22 +203,23 @@ void window_add_maximize_button(window_t * w) {
     draw_rect(&canvas, w->width - 66, 0, 22, 22);
 }
 
-void window_add_childwindow(window_t * w, window_t * childw) {
 
-}
-
-
-
+/*
+* Recursively find out what windows are under window w
+*/
 void add_under_windows(window_t * w) {
     recur_add_under_windows(w, windows_tree->root);
 }
 
+/*
+* Helper function for add_under_windows
+*/
 void recur_add_under_windows(window_t * w, gtreenode_t * subroot) {
     // Stop exploring any branches under w
     window_t * curr_w = subroot->value;
     if(curr_w == w) return;
 
-    if(is_rect_overlap(rect_create(w->x, w->y, w->width, w->height), rect_create(curr_w->x, curr_w->y, curr_w->width, curr_w->height))) {
+    if(is_window_overlap(w, curr_w)) {
         list_insert_back(w->under_windows, curr_w);
         list_insert_back(curr_w->above_windows, w);
     }
@@ -242,7 +249,8 @@ void window_display(window_t * w) {
         rect_reg.r.width = w->width;
         rect_reg.r.height = w->height;
         rect_reg.region = w->frame_buffer;
-        draw_rect_pixels(&canvas, &rect_reg);
+        //draw_rect_pixels(&canvas, &rect_reg);
+        repaint(rect_reg.r);
     }
 }
 
@@ -251,13 +259,13 @@ void window_display(window_t * w) {
  * This is slow! And ! It doesn't consider the case where windows overlap with each other
  * */
 void display_all_window() {
-    gtreenode_t * super = get_super_window()->self;
-    // Display super window
+    // Display super window and all its children
     window_display(get_super_window());
-    // Display sub window
-    display_recur(super);
 }
 
+/*
+* Helper function for display_all_window
+*/
 void display_recur(gtreenode_t * t) {
     foreach(child, t->children) {
         gtreenode_t * node = child->val;
@@ -267,14 +275,25 @@ void display_recur(gtreenode_t * t) {
     }
 }
 
+/*
+* Getter for super window, it's esentially the desktop
+*/
 window_t * get_super_window() {
     return windows_tree->root->value;
 }
 
+
+/*
+* The fill color is used when I drew window directly to the screen buffer, it's deprecated now.
+*/
 void set_window_fillcolor(window_t * w, uint32_t color) {
     w->fill_color = color;
 }
 
+
+/*
+* Move window to a start at (x,y)
+*/
 void move_window(window_t * w, int x, int y) {
     int oldx = w->x;
     int oldy = w->y;
@@ -286,11 +305,19 @@ void move_window(window_t * w, int x, int y) {
     repaint(rect_create(w->x, w->y, w->width, w->height));
 }
 
+
+/*
+* Minimize window
+*/
 void minimize_window(window_t * w) {
     w->is_minimized = 1;
     repaint(rect_create(w->x, w->y, w->width, w->height));
 }
 
+
+/*
+* Maximize window, this doesn't work yet
+*/
 void maximize_window(window_t * w) {
     if(w->is_maximized == 1) {
         // Restore original size
@@ -306,9 +333,14 @@ void maximize_window(window_t * w) {
     }
 }
 
+
+/*
+* Different from minimize_window, close_window actually removes the window from the window tree,
+*/
 void close_window(window_t * w) {
-    int oldx = w->x;
-    int oldy = w->y;
+    point_t p = get_canonical_coordinates(w);
+    int oldx = p.x;
+    int oldy = p.y;
     int oldw = w->width;
     int oldh = w->height;
     // Remove the window from tree
@@ -316,6 +348,9 @@ void close_window(window_t * w) {
     repaint(rect_create(oldx, oldy, oldw, oldh));
 }
 
+/*
+* Resize window, this function doesn't work now after I start to give frame buffer to every window, don't use it for now
+*/
 void resize_window(window_t * w, int new_width, int new_height) {
     int oldw = w->width;
     int oldh = w->height;
@@ -418,10 +453,16 @@ uint32_t get_window_pixel(window_t * w, int x, int y) {
     return w->frame_buffer[idx];
 }
 
+/*
+* Is a point in the rectangle ?
+*/
 int is_point_in_rect(int point_x, int point_y, rect_t * r) {
     return (point_x >= r->x && point_x < r->x + r->width) && (point_y >= r->y && point_y < r->y + r->height);
 }
 
+/*
+* Is a point in the window?
+*/
 int is_point_in_window(int x, int y, window_t * w) {
     rect_t r;
     point_t p = get_canonical_coordinates(w);
@@ -433,10 +474,18 @@ int is_point_in_window(int x, int y, window_t * w) {
 }
 
 
+/*
+* Getter for screen canvas
+*/
 canvas_t * get_screen_canvas() {
     return &canvas;
 }
 
+/*
+* Canonical coordinates is the coordinates relative to the whole screen
+* Relative coordinates is the coordiantes relative to its parent
+* This function convert canonical coords to relative
+*/
 point_t get_relative_coordinates(window_t * w, int x, int y) {
     point_t p = get_canonical_coordinates(w);
     p.x = x - p.x;
@@ -444,6 +493,9 @@ point_t get_relative_coordinates(window_t * w, int x, int y) {
     return p;
 }
 
+/*
+* This function convert relative coords to canonical one
+*/
 point_t get_canonical_coordinates(window_t * w) {
     point_t p;
     p.x = w->x;
@@ -458,6 +510,21 @@ point_t get_canonical_coordinates(window_t * w) {
     return p;
 }
 
+/*
+* Is two window overlap ?
+*/
+int is_window_overlap(window_t * w1, window_t * w2) {
+    point_t p1 = get_canonical_coordinates(w1);
+    point_t p2 = get_canonical_coordinates(w1);
+    rect_t r1 = rect_create(p1.x, p1.y, w1->width, w1->height);
+    rect_t r2 = rect_create(p2.x, p2.y, w2->width, w2->height);
+    return is_rect_overlap(r1, r2);
+}
+
+
+/*
+* Initialize compositor by getting info from vesa driver, creating screen cavans struct, and creating the super window and load desktop wallpaper
+*/
 void compositor_init() {
     // Get linear frame buffer from vesa driver
     screen = vesa_get_lfb();
