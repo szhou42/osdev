@@ -114,5 +114,5 @@ The plan is subject to change
 
 # Screenshots  
 ![Alt text](/os_screenshots/ss7.png?raw=true "ss7")
-![Alt text](/os_screenshots/ss11.png?raw=true "ss11")
+![Alt text](/os_screenshots/ss12.png?raw=true "ss12")
 

@@ -10,6 +10,7 @@ extern uint32_t fill_color;
 #define WINDOW_SUPER   0
 #define WINDOW_NORMAL  1
 #define WINDOW_CONTROL 2
+#define WINDOW_ALERT   3
 
 #define VESA_COLOR_WHITE 0x00ffffff
 #define VESA_COLOR_BLACK 0x00000000
@@ -26,6 +27,11 @@ extern uint32_t fill_color;
 
 #define WINMSG_KEYBOARD 1
 
+
+typedef struct point {
+    int x;
+    int y;
+}point_t;
 
 typedef struct window {
     // Name, optonal
@@ -147,4 +153,9 @@ int is_point_in_rect(int point_x, int point_y, rect_t * r);
 
 void window_message_handler(winmsg_t * msg);
 
+point_t get_canonical_coordinates(window_t * w);
+
+window_t * alertbox_create(window_t * parent, int x, int y, char * title, char * text);
+
+point_t get_relative_coordinates(window_t * w, int x, int y);
 #endif

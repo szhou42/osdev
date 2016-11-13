@@ -87,6 +87,7 @@ void mouse_handler(register_t * regs)
         case 0:
             mouse_byte[0] = mouse_read();
             if(MOUSE_LEFT_BUTTON(mouse_byte[0])) {
+                printf("Your mouse's left button was clicked\n");
                 // Call window message handler
                 msg.msg_type = WINMSG_MOUSE;
                 msg.sub_type = WINMSG_MOUSE_LEFTCLICK;
@@ -94,9 +95,6 @@ void mouse_handler(register_t * regs)
                 msg.cursor_y = mouse_y;
                 msg.window = query_window_by_point(mouse_x, mouse_y);
                 window_message_handler(&msg);
-
-                printf("Your mouse's left button was clicked\n");
-                display_all_window();
             }
             else if(MOUSE_RIGHT_BUTTON(mouse_byte[0])) {
                 printf("Your mouse's right button was clicked\n");
