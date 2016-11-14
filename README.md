@@ -1,12 +1,15 @@
 # simpleos
 A toy operating system based on <a href = "http://www.osdever.net/bkerndev/Docs/title.htm"> Brans' Kernel Development Tutorial</a>  
-In the near future, I will work on the following functionality  
- - Multi-process/Multi-threading/Spinlock/Basic round robin scheduling algorithm
- - Support elf(now support flat binary program)
- - Write the 17 sys call necessary for porting c library (fork, exec, exit, open …..)
- - Port newlib
- - Start writing user space apps like env, rm, mkdir… etc
- - I can’t wait to start coding GUI, but still need more time to build these basic infrastructure in order for a functional gui
+The major goals of this project is to build a operating system that has:  
+1. Memory manager(from virtual page allocation to kmalloc) [Done]  
+2. File system(Hard disk driver, Support ext2, and virtual filesystem) [Done]  
+3. Graphical User Interface  
+4. Premptive multitasking  
+5. Network(TCP, UDP, HTTP)  
+6. Sound  
+7. User apps(File browser, downloader, editor and etc)
+
+I am also planning to start a similar project called simpleCompiler(A basic C compiler with both front-end and back-end), after simpleos.
 
 # How to run and test simpleos kernel
 

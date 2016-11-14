@@ -249,8 +249,9 @@ void window_display(window_t * w) {
         rect_reg.r.width = w->width;
         rect_reg.r.height = w->height;
         rect_reg.region = w->frame_buffer;
-        //draw_rect_pixels(&canvas, &rect_reg);
-        repaint(rect_reg.r);
+        draw_rect_pixels(&canvas, &rect_reg);
+        //repaint(rect_reg.r);
+        display_recur(w->self);
     }
 }
 
@@ -260,6 +261,7 @@ void window_display(window_t * w) {
  * */
 void display_all_window() {
     // Display super window and all its children
+    // How many jiffies this take?
     window_display(get_super_window());
 }
 
