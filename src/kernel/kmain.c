@@ -83,8 +83,7 @@ int kmain(multiboot_info_t * mb_info) {
 
     printf("Initializing real time clock...\n");
     rtc_init();
-    printf("Current date and time: %d:%d", current_datetime.hour, current_datetime.minute);
-    for(;;);
+    printf("Current date and time: %s", datetime_to_str(&current_datetime));
     //process_init();
 
 
@@ -158,7 +157,9 @@ int kmain(multiboot_info_t * mb_info) {
 
 
     // Top desktop bar
-    window_create(get_super_window(), 0, 0, 1024, 25, WINDOW_NORMAL, "desktop_bar");
+    window_t * bar_w = window_create(get_super_window(), 0, 0, 1024, 25, WINDOW_NORMAL, "desktop_bar");
+    canvas_t canvas_bar = canvas_create(bar_w->width, bar_w->height, bar_w->frame_buffer);
+    draw_text(&canvas_bar, get_current_datetime_str(), 1, 115);
 
     display_all_window();
 

@@ -28,6 +28,8 @@ void rtc_write_datetime(datetime_t * dt);
 
 char * datetime_to_str(datetime_t * dt);
 
+char * get_current_datetime_str();
+
 void rtc_init();
 
 

@@ -1,9 +1,11 @@
 #include <rtc.h>
 #include <string.h>
+#include <kheap.h>
 
 // Global var, store current date and time
 datetime_t current_datetime;
 
+char * day_map[7] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
 /*
  * Check if rtc is updating time currently
  * */
@@ -42,13 +44,25 @@ void rtc_read_datetime() {
     current_datetime.day = get_rtc_register(0x07);
     current_datetime.month = get_rtc_register(0x08);
     current_datetime.year = get_rtc_register(0x09);
+
+    uint8_t registerB = get_rtc_register(0x0B);
+
+    // Convert BCD to binary values if necessary
+    if (!(registerB & 0x04)) {
+        current_datetime.second = (current_datetime.second & 0x0F) + ((current_datetime.second / 16) * 10);
+        current_datetime.minute = (current_datetime.minute & 0x0F) + ((current_datetime.minute / 16) * 10);
+        current_datetime.hour = ( (current_datetime.hour & 0x0F) + (((current_datetime.hour & 0x70) / 16) * 10) ) | (current_datetime.hour & 0x80);
+        current_datetime.day = (current_datetime.day & 0x0F) + ((current_datetime.day / 16) * 10);
+        current_datetime.month = (current_datetime.month & 0x0F) + ((current_datetime.month / 16) * 10);
+        current_datetime.year = (current_datetime.year & 0x0F) + ((current_datetime.year / 16) * 10);
+    }
 }
 
 /*
  * Write a datetime struct to rtc
  * */
 void rtc_write_datetime(datetime_t * dt) {
-     // Wait until rtc is not updating
+    // Wait until rtc is not updating
     while(is_updating_rtc());
 
     set_rtc_register(0x00, dt->second);
@@ -61,24 +75,50 @@ void rtc_write_datetime(datetime_t * dt) {
 
 /*
  * A convenient function that converts a datetime struct to string
+ * Only support the format: "day hour:minute"
+ * For example, "Sat 6:32"
  * */
 char * datetime_to_str(datetime_t * dt) {
-    return NULL;
+    char * ret = kcalloc(15, 1);
+    char day[4];
+    char hour[3];
+    char min[3];
+
+    memset(&day, 0x0, 4);
+    memset(&hour, 0x0, 3);
+    memset(&min, 0x0, 3);
+
+    //strcpy(day, day_map[dt->day]);
+    strcpy(day, "Sat");
+    itoa(hour, dt->hour, 10);
+    itoa(min, dt->minute, 10);
+
+    strcpy(ret, day);
+    strcat(ret, " ");
+    strcat(ret, hour);
+    strcat(ret, ":");
+    strcat(ret, min);
+    strcat(ret, " PM");
+    return ret;
+}
+
+char * get_current_datetime_str() {
+    return datetime_to_str(&current_datetime);
 }
 
 /*
  * Initialize RTC
  * */
 void rtc_init() {
-/*
-    current_datetime.century = 21;
-    current_datetime.year = 16;
-    current_datetime.month = 1;
-    current_datetime.day = 1;
-    current_datetime.hour = 0;
-    current_datetime.minute = 0;
-    current_datetime.second = 0;
-    rtc_write_datetime(&current_datetime);
-*/
+    /*
+       current_datetime.century = 21;
+       current_datetime.year = 16;
+       current_datetime.month = 1;
+       current_datetime.day = 1;
+       current_datetime.hour = 0;
+       current_datetime.minute = 0;
+       current_datetime.second = 0;
+       rtc_write_datetime(&current_datetime);
+       */
     rtc_read_datetime();
 }
