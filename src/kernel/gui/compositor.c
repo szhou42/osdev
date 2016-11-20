@@ -249,8 +249,8 @@ void window_display(window_t * w) {
         rect_reg.r.width = w->width;
         rect_reg.r.height = w->height;
         rect_reg.region = w->frame_buffer;
-        draw_rect_pixels(&canvas, &rect_reg);
-        //repaint(rect_reg.r);
+        //draw_rect_pixels(&canvas, &rect_reg);
+        repaint(rect_reg.r);
         display_recur(w->self);
     }
 }
@@ -273,7 +273,6 @@ void display_recur(gtreenode_t * t) {
         gtreenode_t * node = child->val;
         window_t * w = node->value;
         window_display(w);
-        display_recur(node);
     }
 }
 

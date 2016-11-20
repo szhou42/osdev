@@ -25,10 +25,12 @@
 #include <mouse.h>
 #include <keyboard.h>
 #include <font.h>
+#include <rtc.h>
 
 
 extern uint8_t * bitmap;
 extern ata_dev_t primary_master;
+extern datetime_t current_datetime;
 
 #define MSIZE 48 * M
 
@@ -78,6 +80,11 @@ int kmain(multiboot_info_t * mb_info) {
     ata_init();
     ext2_init("/dev/hda", "/");
 
+
+    printf("Initializing real time clock...\n");
+    rtc_init();
+    printf("Current date and time: %d:%d", current_datetime.hour, current_datetime.minute);
+    for(;;);
     //process_init();
 
 
