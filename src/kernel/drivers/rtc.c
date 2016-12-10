@@ -5,7 +5,7 @@
 // Global var, store current date and time
 datetime_t current_datetime;
 
-char * day_map[7] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+char * weekday_map[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 /*
  * Check if rtc is updating time currently
  * */
@@ -88,8 +88,8 @@ char * datetime_to_str(datetime_t * dt) {
     memset(&hour, 0x0, 3);
     memset(&min, 0x0, 3);
 
-    //strcpy(day, day_map[dt->day]);
-    strcpy(day, "Sat");
+    const char * weekday = weekday_map[get_weekday_from_date(dt)];
+    strcpy(day, weekday);
     itoa(hour, dt->hour, 10);
     itoa(min, dt->minute, 10);
 
@@ -104,6 +104,31 @@ char * datetime_to_str(datetime_t * dt) {
 
 char * get_current_datetime_str() {
     return datetime_to_str(&current_datetime);
+}
+
+/*
+ * Given a date, calculate it's weekday, using the algorithm described here: http://blog.artofmemory.com/how-to-calculate-the-day-of-the-week-4203.html
+ * */
+int get_weekday_from_date(datetime_t * dt) {
+    char month_code_array[] = {0x0,0x3, 0x3, 0x6, 0x1, 0x4, 0x6, 0x2, 0x5, 0x0, 0x3, 0x5};
+    char century_code_array[] = {0x4, 0x2, 0x0, 0x6, 0x4, 0x2, 0x0};    // Starting from 18 century
+
+    // Simple fix...
+    dt->century = 21;
+
+    // Calculate year code
+    int year_code = (dt->year + (dt->year / 4)) % 7;
+    int month_code = month_code_array[dt->month - 1];
+    int century_code = century_code_array[dt->century - 1 - 17];
+    int leap_year_code = is_leap_year(dt->year, dt->month);
+
+    int ret = (year_code + month_code + century_code + dt->day - leap_year_code) % 7;
+    return ret;
+}
+
+int is_leap_year(int year, int month) {
+    if(year % 4 == 0 && (month == 1 || month == 2)) return 1;
+    return 0;
 }
 
 /*

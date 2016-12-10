@@ -137,7 +137,7 @@ int kmain(multiboot_info_t * mb_info) {
     window_add_minimize_button(green_w);
     window_add_maximize_button(green_w);
     canvas_t canvas_green = canvas_create(green_w->width, green_w->height, green_w->frame_buffer);
-    set_font_color(VESA_COLOR_GREEN);
+    set_font_color(VESA_COLOR_BLACK + 1);
     draw_text(&canvas_green, "File browser", 1, 19);
 
 
@@ -148,7 +148,7 @@ int kmain(multiboot_info_t * mb_info) {
     window_add_minimize_button(blue_w);
     window_add_maximize_button(blue_w);
     canvas_t canvas_blue = canvas_create(blue_w->width, blue_w->height, blue_w->frame_buffer);
-    set_font_color(VESA_COLOR_BLUE);
+    set_font_color(VESA_COLOR_BLACK + 1);
     draw_text(&canvas_blue, "Web Browser", 1, 19);
     window_t * web_button = window_create(blue_w, 30, 30, 60, 30, WINDOW_CONTROL, "window_xp");
     canvas_t canvas_button = canvas_create(web_button->width, web_button->height, web_button->frame_buffer);
@@ -159,6 +159,7 @@ int kmain(multiboot_info_t * mb_info) {
     // Top desktop bar
     window_t * bar_w = window_create(get_super_window(), 0, 0, 1024, 25, WINDOW_NORMAL, "desktop_bar");
     canvas_t canvas_bar = canvas_create(bar_w->width, bar_w->height, bar_w->frame_buffer);
+    set_font_color(VESA_COLOR_BLACK+1);
     draw_text(&canvas_bar, get_current_datetime_str(), 1, 115);
 
     display_all_window();

@@ -6,7 +6,6 @@ The major goals of this project is to build a operating system that has:
 3. Graphical User Interface  
 4. Premptive multitasking  
 5. Network(TCP, UDP, HTTP)  
-6. Sound  
 7. User apps(File browser, downloader, editor and etc)
 
 I am also planning to start a similar project called simplegcc(A basic C compiler with both front-end and back-end), after simpleos.
@@ -86,7 +85,7 @@ Now clone the repo to your vm and simply run ./compile.sh to compile the kernel,
 #### Graphical Interface  
 &#160; &#160; &#160; &#160;0 vesa driver, 1024 * 768 color(32-bit color)，framebuffer mode                                              [✔]  
 &#160; &#160; &#160; &#160;1 Milestone(try loading and showing a wallpaper from hardisk!)                                               [✔]  
-&#160; &#160; &#160; &#160;2 Windows compositor, support fonts, optimize GUI speed                                                      [In Progress]  
+&#160; &#160; &#160; &#160;2 Windows compositor, support fonts, buttons,and etc                                                         [✔]  
 &#160; &#160; &#160; &#160;3 Write a shell                                                                                              []  
 &#160; &#160; &#160; &#160;4 Write a file browser                                                                                       []  
 
@@ -99,21 +98,12 @@ Now clone the repo to your vm and simply run ./compile.sh to compile the kernel,
 &#160; &#160; &#160; &#160;5 Port newlib                                                            []  
 &#160; &#160; &#160; &#160;6 Write or port some baisc utilities such asenv, rm, cp, mkdir, reboot   []  
 &#160; &#160; &#160; &#160;7 Real time clock                                                        [✔]  
-&#160; &#160; &#160; &#160;8 Kernel-module loading                                                  []  
 &#160; &#160; &#160; &#160;9 stadard input/output stuff                                             []  
 
 #### Network protocols  
 &#160; &#160; &#160; &#160;0 TCP/IP                []  
 &#160; &#160; &#160; &#160;1 UDP                   []  
 &#160; &#160; &#160; &#160;2 HTTP                  []  
-
-#### Sound  
-&#160; &#160; &#160; &#160;0 sound driver          []
-
-#### Port  
-&#160; &#160; &#160; &#160;0 Port vim to my os     []
-
-The plan is subject to change  
 
 # Screenshots  
 ![Alt text](/os_screenshots/ss7.png?raw=true "ss7")

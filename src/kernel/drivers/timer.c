@@ -1,6 +1,10 @@
 #include <timer.h>
 #include <isr.h>
 #include <printf.h>
+#include <compositor.h>
+#include <draw.h>
+#include <rtc.h>
+#include <font.h>
 
 // Number of ticks since system booted
 uint32_t jiffies = 0;
@@ -64,6 +68,10 @@ void timer_handler(register_t * reg) {
             w->func();
          }
     }
-    if(jiffies % 200 == 0) {
+    if(jiffies % 1080 == 0) {
+        window_t * w = get_desktop_bar();
+        canvas_t canvas_bar = canvas_create(w->width, w->height, w->frame_buffer);
+        set_font_color(VESA_COLOR_BLACK+1);
+        draw_text(&canvas_bar, get_current_datetime_str(), 1, 115);
     }
 }

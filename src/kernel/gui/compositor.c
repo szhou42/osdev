@@ -7,15 +7,25 @@
 #include <printf.h>
 #include <generic_tree.h>
 #include <font.h>
+
+
 /*
- *
- *
  *  Why not to use black color in this os ??
  *  :( Unfortunately, a hack I used for displaying transparent-background cursor bitmap is that: I ignore all black colors, I view them as transparent color, because 0x00000000 in bmp file means
  *   transparent, this hack is ridiculous, I will fix this!!
  * */
+
 gtree_t * windows_tree;
 canvas_t canvas;
+
+// Keep a reference to desktop bar
+window_t * desktop_bar;
+
+/*
+* In OS X's window's title bar, each row's color increments, instead of having one color for the entire title bar
+*/
+uint32_t title_bar_colors[18] = {0x00EDEDED, 0x00EBEBEB, 0x00E9E9E9, 0x00E7E7E7, 0x00E6E6E6, 0x00E4E4E4, 0x00E3E3E3, 0x00E1E1E1, 0x00DFDFDF, 0x00DDDDDD, 0x00DCDCDC,\
+0x00DADADA, 0x00D8D8D8, 0x00D7D7D7, 0x00D6D6D6, 0x00D5D5D5, 0x00C7C7C7, 0x00D7D7D7};
 
 
 /*
@@ -37,19 +47,19 @@ void window_message_handler(winmsg_t * msg) {
 
                 if(w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT){
                     // If the point is within the rectangle of the close button, close the window
-                    rect_t r = rect_create(w->width - 22, 0, 22, 22);
+                    rect_t r = rect_create(w->width - TITLE_BAR_HEIGHT, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
                     if(w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT) {
                         if(is_point_in_rect(cursor_x, cursor_y, &r)) {
                             close_window(msg->window);
                         }
                     }
                     // Maximize button
-                    r.x = w->width - 44;
+                    r.x = w->width - TITLE_BAR_HEIGHT * 2;
                     if(is_point_in_rect(cursor_x, cursor_y, &r)) {
                         maximize_window(msg->window);
                     }
                     // Minimize button
-                    r.x = w->width - 66;
+                    r.x = w->width - TITLE_BAR_HEIGHT * 3;
                     if(is_point_in_rect(cursor_x, cursor_y, &r)) {
                         minimize_window(msg->window);
                     }
@@ -129,7 +139,7 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
         else if(strcmp(name, "window_black") == 0)
             memsetdw(w->frame_buffer, 0x00000001, width * height);
         else if(strcmp(name, "window_classic") == 0)
-            memsetdw(w->frame_buffer, 0x00FBFBF9, width * height);
+            memsetdw(w->frame_buffer, 0x00EEEEEE, width * height);
         else if(strcmp(name, "window_xp") == 0)
             memsetdw(w->frame_buffer, 0x00F7F3F0, width * height);
         else if(strcmp(name, "alertbox_button") == 0)
@@ -156,6 +166,9 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
 
     // Loop through all other windows in the tree, if overlap, add them to list w->under_windows
     add_under_windows(w);
+
+    if(strcmp(w->name, "desktop_bar") == 0)
+        desktop_bar = w;
     return w;
 }
 
@@ -165,24 +178,25 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
 
 /*
  * Draw a headline for the window, given a headline string
- * window headline has height = 22, hardcoded
+ * window headline has height = TITLE_BAR_HEIGHT, hardcoded
  * */
 void window_add_headline(window_t * w, char * headline) {
     // Draw a rectangle at the start of the window
-    set_fill_color(0x00DCE8EC);
+    // It should have a headline area that gradually increases color in each row
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
-    draw_rect(&canvas, 0, 0, w->width, 22);
-    set_fill_color(0x00D3D3D3);
-    draw_line(&canvas, 0, 22, w->width, 22);
+    for(int i = 0; i < 18; i++) {
+        set_fill_color(title_bar_colors[i]);
+        draw_line(&canvas, 0, i, w->width, i);
+    }
 }
 
 /*
- * Draw a close button for headline (size is 22*22)
+ * Draw a close button for headline (size is 18*18)
  * */
 void window_add_close_button(window_t * w) {
     set_fill_color(0x00ff0000);
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
-    draw_rect(&canvas, w->width - 22, 0, 22, 22);
+    draw_rect(&canvas, 0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
 }
 
 /*
@@ -191,7 +205,7 @@ void window_add_close_button(window_t * w) {
 void window_add_minimize_button(window_t * w) {
     set_fill_color(0x0000ff00);
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
-    draw_rect(&canvas, w->width - 44, 0, 22, 22);
+    draw_rect(&canvas, TITLE_BAR_HEIGHT * 2, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
 }
 
 /*
@@ -200,7 +214,7 @@ void window_add_minimize_button(window_t * w) {
 void window_add_maximize_button(window_t * w) {
     set_fill_color(0x00ffff00);
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
-    draw_rect(&canvas, w->width - 66, 0, 22, 22);
+    draw_rect(&canvas, TITLE_BAR_HEIGHT, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
 }
 
 
@@ -281,6 +295,10 @@ void display_recur(gtreenode_t * t) {
 */
 window_t * get_super_window() {
     return windows_tree->root->value;
+}
+
+window_t * get_desktop_bar() {
+    return desktop_bar;
 }
 
 

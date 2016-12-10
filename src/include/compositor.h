@@ -27,6 +27,7 @@ extern uint32_t fill_color;
 
 #define WINMSG_KEYBOARD 1
 
+#define TITLE_BAR_HEIGHT 18
 
 typedef struct point {
     int x;
@@ -114,6 +115,8 @@ void display_recur(gtreenode_t * t);
 void move_window(window_t * w, int x, int y);
 
 window_t * get_super_window();
+
+window_t * get_desktop_bar();
 
 void minimize_window(window_t * w);
 
