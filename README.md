@@ -101,9 +101,13 @@ Now clone the repo to your vm and simply run ./compile.sh to compile the kernel,
 &#160; &#160; &#160; &#160;9 stadard input/output stuff                                             []  
 
 #### Network protocols  
-&#160; &#160; &#160; &#160;0 TCP/IP                []  
-&#160; &#160; &#160; &#160;1 UDP                   []  
-&#160; &#160; &#160; &#160;2 HTTP                  []  
+&#160; &#160; &#160; &#160;0 Send/Recv raw packets  []  
+&#160; &#160; &#160; &#160;1 IP                     []  
+&#160; &#160; &#160; &#160;2 UDP                    []  
+&#160; &#160; &#160; &#160;3 ARP                    []  
+&#160; &#160; &#160; &#160;4 DHCP                   []  
+&#160; &#160; &#160; &#160;5 TCP                    []  
+&#160; &#160; &#160; &#160;6 HTTP                   []  
 
 # Screenshots  
 ![Alt text](/os_screenshots/ss7.png?raw=true "ss7")

@@ -57,12 +57,18 @@ typedef struct register16 {
 // Defined in port_io.c
 void outportb(uint16_t port, uint8_t val);
 uint8_t inportb(uint16_t port);
-
 uint16_t inports(uint16_t _port);
 void outports(uint16_t _port, uint16_t _data);
-
 uint32_t inportl(uint16_t _port);
 void outportl(uint16_t _port, uint32_t _data);
+
+// Defined in mmio.c
+uint8_t in_memb(uint32_t addr);
+uint16_t in_mems (uint32_t addr);
+uint32_t in_meml(uint32_t addr);
+void out_memb(uint32_t addr, uint8_t value);
+void out_mems(uint32_t addr, uint16_t value);
+void out_meml(uint32_t addr, uint32_t value);
 
 // Defined in system.c
 void panic(const char *message, const char *file, uint32_t line);
