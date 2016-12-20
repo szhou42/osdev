@@ -76,7 +76,6 @@ extern uint32_t  bitmap_size;
 // Defined in paging.c
 extern page_directory_t * kpage_dir;
 
-
 void * virtual2phys(page_directory_t * dir, void * virtual_addr);
 
 void * dumb_kmalloc(uint32_t size, int align);

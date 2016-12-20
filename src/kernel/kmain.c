@@ -26,6 +26,8 @@
 #include <keyboard.h>
 #include <font.h>
 #include <rtc.h>
+#include <e1000.h>
+#include <ethernet.h>
 
 
 extern uint8_t * bitmap;
@@ -89,20 +91,37 @@ int kmain(multiboot_info_t * mb_info) {
 
     set_curr_color(WHITE);
 
-    printf("Initializing system calls and enter usermode...\n");
-    syscall_init();
-    vfs_db_listdir("/");
+    //printf("Initializing system calls and enter usermode...\n");
+    //syscall_init();
+    //vfs_db_listdir("/");
 
-    uint32_t esp;
-    asm volatile("mov %%esp, %0" : "=r"(esp));
-    tss_set_stack(0x10, esp);
+    //uint32_t esp;
+    //asm volatile("mov %%esp, %0" : "=r"(esp));
+    //tss_set_stack(0x10, esp);
 
-    //create_process("/test1.bin");
-    //bios32_init();
-    //test_bios32();
+#if 1
+    printf("Initializing network driver...\n");
+    e1000_init();
+    uint8_t mac[6];
+    mac[0] = 0x52;
+    mac[1] = 0x54;
+    mac[2] = 0x00;
+    mac[3] = 0x12;
+    mac[4] = 0x34;
+    mac[5] = 0x56;
+    char * str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    ethernet_send_packet(mac, str, strlen(str), 0x0021);
+    ethernet_send_packet(mac, str, strlen(str), 0x0021);
+    printf("Packet sent\n");
+#endif
 
-    vesa_init();
 #if 0
+    create_process("/test1.bin");
+    bios32_init();
+#endif
+
+#if 0
+    vesa_init();
     bitmap_t * bmp = bitmap_create("/wallpaper.bmp");
     bitmap_display(bmp);
 #endif
@@ -118,7 +137,8 @@ int kmain(multiboot_info_t * mb_info) {
     }
 #endif
 
-#if 1
+#if 0
+    vesa_init();
     compositor_init();
 
     // Terminal

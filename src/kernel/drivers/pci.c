@@ -2,7 +2,7 @@
 #include <string.h>
 #include <printf.h>
 
-uint32_t pci_size_map[60];
+uint32_t pci_size_map[100];
 pci_dev_t dev_zero= {0};
 /*
  * Given a pci device(32-bit vars containing info about bus, device number, and function number), a field(what u want to read from the config space)

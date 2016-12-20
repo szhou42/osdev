@@ -94,10 +94,6 @@ void allocate_page(page_directory_t * dir, uint32_t virtual_addr, uint32_t frame
         // Remember, dumb_kmalloc returns a virtual address, but what we put into the paging structure, MUST BE, in terms of phsical address
         // Since we've mapped [0 to 4mb physical mem] to [0xc0000000 to 0xc0000000+4mb], we can get the physical addr by subtracting 0xc0000000
 
-        // (If u don't understand what i am saying here just ignore it)I was tempted to allocate a block for the table in here, but it's wrong.
-        // This would mess up the mapping, just let the table be informed where in phsyical mem in sits
-        // that part of phys mem is not allocated to it yet, but it's fine.
-
         uint32_t t = (uint32_t)virtual2phys(kpage_dir, table);
         dir->tables[page_dir_idx].frame = t >> 12;
         dir->tables[page_dir_idx].present = 1;
