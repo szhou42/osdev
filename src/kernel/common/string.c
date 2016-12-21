@@ -1,5 +1,6 @@
 #include <string.h>
 #include <system.h>
+
 void *memcpy(void *dst, void const *src, int n)
 {
 #if 1
@@ -158,6 +159,51 @@ void itoa(char *buf, unsigned long int n, int base)
     }
 }
 
+int atoi(char * string) {
+    int result = 0;
+    unsigned int digit;
+    int sign;
+
+    while (isspace(*string)) {
+        string += 1;
+    }
+
+    /*
+     * Check for a sign.
+     */
+
+    if (*string == '-') {
+        sign = 1;
+        string += 1;
+    } else {
+        sign = 0;
+        if (*string == '+') {
+            string += 1;
+        }
+    }
+
+    for ( ; ; string += 1) {
+        digit = *string - '0';
+        if (digit > 9) {
+            break;
+        }
+        result = (10*result) + digit;
+    }
+
+    if (sign) {
+        return -result;
+    }
+    return result;
+}
+
+int isspace(char c) {
+    return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
+}
+
+int isprint(char c) {
+    return ((c >= ' ' && c <= '~') ? 1 : 0);
+}
+
 char * strdup(const char * src) {
     int len = strlen(src) + 1;
     char * dst = kmalloc(len);
@@ -189,8 +235,8 @@ char *strsep(char **stringp, const char *delim) {
 }
 
 /*
-Split a string into list of strings
-*/
+   Split a string into list of strings
+   */
 list_t * str_split(const char * str, const char * delim, unsigned int * numtokens) {
     list_t * ret_list = list_create();
     char *s = strdup(str);
@@ -211,8 +257,8 @@ list_t * str_split(const char * str, const char * delim, unsigned int * numtoken
  * Reconstruct the string with tokens and delimiters
  * */
 char * list2str(list_t * list, const char * delim) {
-     char * ret = kmalloc(256);
-     memset(ret, 0, 256);
+    char * ret = kmalloc(256);
+    memset(ret, 0, 256);
     int len = 0, ret_len = 256;
     while(list_size(list)> 0) {
         char * temp = list_pop(list)->val;
@@ -227,3 +273,4 @@ char * list2str(list_t * list, const char * delim) {
     }
     return ret;
 }
+

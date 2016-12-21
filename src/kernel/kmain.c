@@ -28,6 +28,7 @@
 #include <rtc.h>
 #include <rtl8139.h>
 #include <ethernet.h>
+#include <ethernet.h>
 
 
 extern uint8_t * bitmap;
@@ -109,7 +110,7 @@ int kmain(multiboot_info_t * mb_info) {
     mac_addr[3] = 0xDD;
     mac_addr[4] = 0xEE;
     mac_addr[5] = 0xFF;
-    //get_mac_addr(mac_addr);
+    get_mac_addr(mac_addr);
     char * str = "FUCK YOU!!!!!!!!!!!!!!";
     ethernet_send_packet(mac_addr, str, strlen(str), 0x0021);
     printf("Packet sent\n");

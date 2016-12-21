@@ -3,6 +3,10 @@
 #include <printf.h>
 #include <vga.h>
 
+int is_format_letter(char c) {
+    return c == 'c' ||  c == 'd' || c == 'i' ||c == 'e' ||c == 'E' ||c == 'f' ||c == 'g' ||c == 'G' ||c == 'o' ||c == 's' || c == 'u' || c == 'x' || c == 'X' || c == 'p' || c == 'n';
+}
+
 /*
  * Both printf and sprintf call this function to do the actual formatting
  * The only difference of printf and sprintf is, one writes to screen memory, and another writes to normal memory buffer
@@ -18,9 +22,11 @@ void vsprintf_helper(char * str, const char * format, uint32_t * pos, va_list ar
     char c;
     int sign, ival, sys;
     char buf[512];
+    char width_str[10];
     uint32_t uval;
-    uint32_t size;
-
+    uint32_t size = 8;
+    uint32_t i;
+    int size_override = 0;
     memset(buf, 0, 512);
 
     while((c = *format++) != 0) {
@@ -29,11 +35,25 @@ void vsprintf_helper(char * str, const char * format, uint32_t * pos, va_list ar
         if(c == '%') {
             c = *format++;
             switch(c) {
+                // Handle calls like printf("%08x", 0xaa);
+                case '0':
+                    size_override = 1;
+                    // Get the number between 0 and (x/d/p...)
+                    i = 0;
+                    c = *format;
+                    while(!is_format_letter(c)) {
+                        width_str[i++] = c;
+                        format++;
+                        c = *format;
+                    }
+                    width_str[i] = 0;
+                    format++;
+                    // Convert to a number
+                    size = atoi(width_str);
                 case 'd':
                 case 'u':
                 case 'x':
                 case 'p':
-                    size = 8;
                     if(c == 'd' || c == 'u')
                         sys = 10;
                     else
@@ -46,11 +66,13 @@ void vsprintf_helper(char * str, const char * format, uint32_t * pos, va_list ar
                     }
                     itoa(buf, uval, sys);
                     uint32_t len = strlen(buf);
-                    if((c == 'x' || c == 'p') &&len < size) {
-                        for(uint32_t i = 0; i < size - len; i++) {
+                    // If use did not specify width, then just use len = width
+                    if(!size_override) size = len;
+                    if((c == 'x' || c == 'p' || c == 'd') &&len < size) {
+                        for(i = 0; i < len; i++) {
                             buf[size - 1 - i] = buf[len - 1 - i];
                         }
-                        for(uint32_t i = 0; i < size - len; i++) {
+                        for(i = 0; i < size - len; i++) {
                             buf[i] = '0';
                         }
                     }
@@ -124,3 +146,5 @@ void sprintf(char * buf, const char * fmt, ...) {
     vsprintf(buf, fmt, ap);
     va_end(ap);
 }
+
+

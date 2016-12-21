@@ -29,6 +29,12 @@ char * strstr(const char *in, const char *str);
 
 void itoa(char *buf, unsigned long int n, int base);
 
+int atoi(char * string);
+
+int isspace(char c);
+
+int isprint(char c);
+
 char * strdup(const char * src);
 
 char * strsep(char ** stringp, const char * delim);

@@ -8,6 +8,16 @@
 #define RTL8139_VENDOR_ID 0x10EC
 #define RTL8139_DEVICE_ID 0x8139
 
+#define RX_BUF_SIZE 8192
+
+#define CAPR 0x38
+#define RX_READ_POINTER_MASK (~3)
+#define ROK                 (1<<0)
+#define RER                 (1<<1)
+#define TOK     (1<<2)
+#define TER     (1<<3)
+#define TX_TOK  (1<<15)
+
 enum RTL8139_registers {
   MAG0             = 0x00,       // Ethernet hardware address
   MAR0             = 0x08,       // Multicast filter

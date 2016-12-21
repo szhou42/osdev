@@ -2,16 +2,43 @@
 #include <pci.h>
 #include <printf.h>
 #include <string.h>
+#include <xxd.h>
 
 pci_dev_t pci_rtl8139_device;
 rtl8139_dev_t rtl8139_device;
 
+uint32_t current_packet_ptr;
+
+void receive_packet() {
+    uint16_t * t = (uint16_t*)(rtl8139_device.rx_buffer + current_packet_ptr);
+    // Skip packet header, get packet length
+    uint16_t packet_length = *(t + 1);
+
+    // t points to the packet data
+    t++;
+    xxd(t, packet_length);
+    current_packet_ptr = (current_packet_ptr + packet_length + 4 + 3) & RX_READ_POINTER_MASK;
+
+    if(current_packet_ptr > RX_BUF_SIZE)
+        current_packet_ptr -= RX_BUF_SIZE;
+
+    outports(rtl8139_device.io_base + CAPR, current_packet_ptr - 0x10);
+}
+
 void rtl8139_handler(register_t * reg) {
     printf("RTL8139 interript was fired !!!! \n");
-    //printf("Content received:\n");
+    uint16_t status = inports(rtl8139_device.io_base + 0x3e);
+
+    if(status & TOK) {
+        printf("Packet sent\n");
+    }
+    if (status & ROK) {
+        printf("Received packet\n");
+        receive_packet();
+    }
+
 
     outports(rtl8139_device.io_base + 0x3E, 0x5);
-    //printf("%s\n", rtl8139_device.rx_buffer);
 }
 
 void read_mac_addr() {
@@ -74,6 +101,7 @@ void rtl8139_init() {
 
     // Allocate receive buffer
     rtl8139_device.rx_buffer = kmalloc(8192 + 16 + 1500);
+    memset(rtl8139_device.rx_buffer, 0x0, 8192 + 16 + 1500);
     outportl(rtl8139_device.io_base + 0x30, (uint32_t)virtual2phys(kpage_dir,rtl8139_device.rx_buffer));
 
     // Sets the TOK and ROK bits high
@@ -91,5 +119,4 @@ void rtl8139_init() {
     printf("Registered irq interrupt for rtl8139, irq num = %d\n", irq_num);
 
     read_mac_addr();
-
 }
