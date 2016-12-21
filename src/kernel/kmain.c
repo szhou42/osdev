@@ -103,8 +103,14 @@ int kmain(multiboot_info_t * mb_info) {
     printf("Initializing network driver...\n");
     rtl8139_init();
     uint8_t mac_addr[6];
-    get_mac_addr(mac_addr);
-    char * str = "aaaaaaaaaa";
+    mac_addr[0] = 0xAA;
+    mac_addr[1] = 0xBB;
+    mac_addr[2] = 0xCC;
+    mac_addr[3] = 0xDD;
+    mac_addr[4] = 0xEE;
+    mac_addr[5] = 0xFF;
+    //get_mac_addr(mac_addr);
+    char * str = "FUCK YOU!!!!!!!!!!!!!!";
     ethernet_send_packet(mac_addr, str, strlen(str), 0x0021);
     printf("Packet sent\n");
 #endif

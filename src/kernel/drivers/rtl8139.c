@@ -8,7 +8,10 @@ rtl8139_dev_t rtl8139_device;
 
 void rtl8139_handler(register_t * reg) {
     printf("RTL8139 interript was fired !!!! \n");
-    outports(rtl8139_device.io_base + 0x3E, 0x4);
+    //printf("Content received:\n");
+
+    outports(rtl8139_device.io_base + 0x3E, 0x5);
+    //printf("%s\n", rtl8139_device.rx_buffer);
 }
 
 void read_mac_addr() {
