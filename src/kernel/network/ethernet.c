@@ -21,8 +21,9 @@ int ethernet_send_packet(uint8_t * dst_mac_addr, uint8_t * data, int len, uint16
     frame->type = 0x0021;
 
     // Send packet
-    e1000_send_packet(frame, sizeof(ethernet_frame_t) + len);
+    rtl8139_send_packet(frame, sizeof(ethernet_frame_t) + len);
     kfree(frame);
+
     return len;
 }
 

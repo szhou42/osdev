@@ -12,7 +12,7 @@ SOURCES=$(ROOT_DIR)/kmain.c $(COMMON_DIR)/system.c $(COMMON_DIR)/string.c $(COMM
 	$(MEM_DIR)/kheap.c $(DRIVERS_DIR)/pci.c $(DRIVERS_DIR)/ata.c $(DS_DIR)/list.c $(DS_DIR)/generic_tree.c\
 	$(FILESYSTEM_DIR)/vfs.c $(FILESYSTEM_DIR)/ext2.c $(SCHEDULER_DIR)/usermode.c $(DT_DIR)/tss.c $(SYSCALL_DIR)/syscall.c $(SCHEDULER_DIR)/process.c\
 	$(LOADER_DIR)/elf_loader.c $(SYSCALL_DIR)/_exit.c $(COMMON_DIR)/bios32.c $(DRIVERS_DIR)/vesa.c $(GUI_DIR)/bitmap.c $(GUI_DIR)/compositor.c $(GUI_DIR)/draw.c\
-	$(GUI_DIR)/font.c $(GUI_DIR)/font_parser.c $(DRIVERS_DIR)/mouse.c $(DRIVERS_DIR)/keyboard.c $(DRIVERS_DIR)/rtc.c $(COMMON_DIR)/mmio.c $(DRIVERS_DIR)/e1000.c $(NETWORK_DIR)/ethernet.c
+	$(GUI_DIR)/font.c $(GUI_DIR)/font_parser.c $(DRIVERS_DIR)/mouse.c $(DRIVERS_DIR)/keyboard.c $(DRIVERS_DIR)/rtc.c $(COMMON_DIR)/mmio.c $(DRIVERS_DIR)/rtl8139.c $(NETWORK_DIR)/ethernet.c
 
 
 ASM_SOURCES=$(ROOT_DIR)/entry.asm $(DT_DIR)/idt_helper.asm $(DT_DIR)/gdt_helper.asm $(INTERRUPT_DIR)/exception_helper.asm \

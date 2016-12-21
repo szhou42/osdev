@@ -129,9 +129,9 @@ void e1000_handler(register_t * reg) {
 }
 
 void e1000_send_packet(void * p_data, uint16_t p_len) {
-    e1000_device.tx_descs[e1000_device.tx_cur]->addr = (uint64_t)virtual2phys(kpage_dir, p_data);
+    e1000_device.tx_descs[e1000_device.tx_cur]->addr = 0;
     e1000_device.tx_descs[e1000_device.tx_cur]->length = p_len;
-    e1000_device.tx_descs[e1000_device.tx_cur]->cmd = CMD_EOP | CMD_IFCS | CMD_RS;
+    e1000_device.tx_descs[e1000_device.tx_cur]->cmd = CMD_EOP | CMD_IFCS | CMD_RS | CMD_RPS;
     e1000_device.tx_descs[e1000_device.tx_cur]->status = 0x0;
     uint8_t old_cur = e1000_device.tx_cur;
     e1000_device.tx_cur = (e1000_device.tx_cur + 1) % E1000_NUM_TX_DESC;
@@ -144,9 +144,9 @@ void e1000_send_packet(void * p_data, uint16_t p_len) {
     tail = e1000_read_command(REG_TXDESCTAIL);
     while(!(e1000_device.tx_descs[old_cur]->status & 0xff)) {
         //printf("Packet not send yet... status: %d\n", e1000_device.tx_descs[old_cur]->status);
-        head = e1000_read_command(REG_TXDESCHEAD);
-        tail = e1000_read_command(REG_TXDESCTAIL);
-        printf("head = %d, tail = %d\n", head, tail);
+        //head = e1000_read_command(REG_TXDESCHEAD);
+        //tail = e1000_read_command(REG_TXDESCTAIL);
+        //printf("head = %d, tail = %d\n", head, tail);
     }
     printf("PACKET SEND SUCCESS!\n");
 }
@@ -177,16 +177,14 @@ void rx_init() {
  */
 void tx_init() {
     void * virtual_addr = kmalloc(sizeof(tx_desc_t) * E1000_NUM_TX_DESC + 16);
+    memset(virtual_addr, sizeof(tx_desc_t) * E1000_NUM_TX_DESC + 16, 0);
     void * phys_addr = virtual2phys(kpage_dir, virtual_addr);
     for(int i = 0; i < E1000_NUM_TX_DESC; i++) {
         e1000_device.tx_descs[i] = (tx_desc_t *)((void *)virtual_addr + i * 16);
-        e1000_device.tx_descs[i]->addr = 0;
-        e1000_device.tx_descs[i]->cmd = 0;
-        e1000_device.tx_descs[i]->status = TSTA_DD;
     }
     e1000_write_command(REG_TXDESCLO, (uint32_t)phys_addr);
     e1000_write_command(REG_TXDESCHI, 0);
-    e1000_write_command(REG_TXDESCLEN, E1000_NUM_TX_DESC * 16);
+    e1000_write_command(REG_TXDESCLEN, E1000_NUM_TX_DESC * 16 + 16);
     e1000_write_command(REG_TXDESCHEAD, 0);
     e1000_write_command(REG_TXDESCTAIL, 0);
     e1000_write_command(REG_TCTRL,  TCTL_EN | TCTL_PSP | (15 << TCTL_CT_SHIFT) | (64 << TCTL_COLD_SHIFT) | TCTL_RTLC);

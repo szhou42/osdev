@@ -1,0 +1,92 @@
+#include <rtl8139.h>
+#include <pci.h>
+#include <printf.h>
+#include <string.h>
+
+pci_dev_t pci_rtl8139_device;
+rtl8139_dev_t rtl8139_device;
+
+void rtl8139_handler(register_t * reg) {
+    printf("RTL8139 interript was fired !!!! \n");
+    outports(rtl8139_device.io_base + 0x3E, 0x4);
+}
+
+void read_mac_addr() {
+    uint32_t mac_part1 = inportl(rtl8139_device.io_base + 0x00);
+    uint16_t mac_part2 = inports(rtl8139_device.io_base + 0x04);
+    rtl8139_device.mac_addr[0] = mac_part1 >> 0;
+    rtl8139_device.mac_addr[1] = mac_part1 >> 8;
+    rtl8139_device.mac_addr[2] = mac_part1 >> 16;
+    rtl8139_device.mac_addr[3] = mac_part1 >> 24;
+
+    rtl8139_device.mac_addr[4] = mac_part2 >> 0;
+    rtl8139_device.mac_addr[5] = mac_part2 >> 8;
+    printf("mac_part1: %x mac_part2: %x\n", mac_part1, mac_part2);
+}
+
+void get_mac_addr(uint8_t * src_mac_addr) {
+    memcpy(src_mac_addr, rtl8139_device.mac_addr, 6);
+}
+
+void rtl8139_send_packet(void * data, uint32_t len) {
+    // First, copy the data to a physically contiguous chunk of memory
+    void * transfer_data = kmalloc_a(len);
+    void * phys_addr = virtual2phys(kpage_dir, transfer_data);
+    memcpy(transfer_data, data, len);
+
+    // Second, fill in physical address of data, and length
+    uint32_t offset = rtl8139_device.tx_cur * 4;
+    outportl(rtl8139_device.io_base + 0x20 + offset, (uint32_t)phys_addr);
+    outportl(rtl8139_device.io_base + 0x10 + offset, len);
+}
+
+/*
+ * Initialize the rtl8139 card driver
+ * */
+void rtl8139_init() {
+    // First get the network device using PCI
+    pci_rtl8139_device = pci_get_device(RTL8139_VENDOR_ID, RTL8139_DEVICE_ID, -1);
+    uint32_t ret = pci_read(pci_rtl8139_device, PCI_BAR0);
+    rtl8139_device.bar_type = ret & 0x1;
+    // Get io base or mem base by extracting the high 28/30 bits
+    rtl8139_device.io_base = ret & (~0x3);
+    rtl8139_device.mem_base = ret & (~0xf);
+    printf("rtl8139 use %s access (base: %x)\n", (rtl8139_device.bar_type == 0)? "mem based":"port based", (rtl8139_device.bar_type != 0)?rtl8139_device.io_base:rtl8139_device.mem_base);
+
+    // Enable PCI Bus Mastering
+    uint32_t pci_command_reg = pci_read(pci_rtl8139_device, PCI_COMMAND);
+    if(!(pci_command_reg & (1 << 2))) {
+        pci_command_reg |= (1 << 2);
+        pci_write(pci_rtl8139_device, PCI_COMMAND, pci_command_reg);
+    }
+
+    // Send 0x00 to the CONFIG_1 register (0x52) to set the LWAKE + LWPTN to active high. this should essentially *power on* the device.
+    outportb(rtl8139_device.io_base + 0x52, 0x0);
+
+    // Soft reset
+    outportb(rtl8139_device.io_base + 0x37, 0x10);
+    while((inportb(rtl8139_device.io_base + 0x37) & 0x10) != 0) {
+        // Do nothibg here...
+    }
+
+    // Allocate receive buffer
+    rtl8139_device.rx_buffer = kmalloc(8192 + 16 + 1500);
+    outportl(rtl8139_device.io_base + 0x30, (uint32_t)virtual2phys(kpage_dir,rtl8139_device.rx_buffer));
+
+    // Sets the TOK and ROK bits high
+    outports(rtl8139_device.io_base + 0x3C, 0x0005);
+
+    // (1 << 7) is the WRAP bit, 0xf is AB+AM+APM+AAP
+    outportl(rtl8139_device.io_base + 0x44, 0xf | (1 << 7));
+
+    // Sets the RE and TE bits high
+    outportb(rtl8139_device.io_base + 0x37, 0x0C);
+
+    // Register and enable network interrupts
+    uint32_t irq_num = pci_read(pci_rtl8139_device, PCI_INTERRUPT_LINE);
+    register_interrupt_handler(32 + irq_num, rtl8139_handler);
+    printf("Registered irq interrupt for rtl8139, irq num = %d\n", irq_num);
+
+    read_mac_addr();
+
+}

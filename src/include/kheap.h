@@ -51,7 +51,7 @@ unsigned int kmalloc_int(unsigned int sz, int align, unsigned int *phys);
 
 void * kmalloc_cont(unsigned int sz, int align, unsigned int *phys);
 
-unsigned int kmalloc_a(unsigned int sz);
+void * kmalloc_a(unsigned int sz);
 
 unsigned int kmalloc_p(unsigned int sz, unsigned int *phys);
 

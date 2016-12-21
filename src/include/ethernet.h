@@ -4,7 +4,7 @@
 #include <string.h>
 #include <kheap.h>
 #include <paging.h>
-#include <e1000.h>
+#include <rtl8139.h>
 
 typedef struct ethernet_frame {
   uint8_t dst_mac_addr[6];

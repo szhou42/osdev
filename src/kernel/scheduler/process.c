@@ -102,7 +102,7 @@ void create_process(char * filename) {
 
     // Create an address space for the process, how ?
     // kmalloc a page directory for the process, then copy the entire kernel page dirs and tables(the frames don't have to be copied though)
-    p1->page_dir = (void*)kmalloc_a(sizeof(page_directory_t));
+    p1->page_dir = kmalloc_a(sizeof(page_directory_t));
     memset(p1->page_dir, 0, sizeof(page_directory_t));
     copy_page_directory(p1->page_dir, kpage_dir);
     p1->regs.cr3 = (uint32_t)virtual2phys(kpage_dir, p1->page_dir);

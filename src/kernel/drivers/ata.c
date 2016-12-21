@@ -221,10 +221,10 @@ void ata_device_init(ata_dev_t * dev, int primary) {
 
     // Setup DMA
     // Prdt must not cross 64kb boundary / contiguous in physical memory. So simply allocate a 4kb aligned page satisfy both conditions
-    dev->prdt = (void*)kmalloc_a(sizeof(prdt_t));
+    dev->prdt = kmalloc_a(sizeof(prdt_t));
     memset(dev->prdt, 0, sizeof(prdt_t));
     dev->prdt_phys = virtual2phys(kpage_dir, dev->prdt);
-    dev->mem_buffer = (void*)kmalloc_a(4096);
+    dev->mem_buffer = kmalloc_a(4096);
     memset(dev->mem_buffer, 0, 4096);
 
     dev->prdt[0].buffer_phys = (uint32_t)virtual2phys(kpage_dir, dev->mem_buffer);

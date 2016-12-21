@@ -26,7 +26,7 @@
 #include <keyboard.h>
 #include <font.h>
 #include <rtc.h>
-#include <e1000.h>
+#include <rtl8139.h>
 #include <ethernet.h>
 
 
@@ -85,7 +85,7 @@ int kmain(multiboot_info_t * mb_info) {
 
     printf("Initializing real time clock...\n");
     rtc_init();
-    printf("Current date and time: %s", datetime_to_str(&current_datetime));
+    printf("Current date and time: %s\n", datetime_to_str(&current_datetime));
     //process_init();
 
 
@@ -101,17 +101,11 @@ int kmain(multiboot_info_t * mb_info) {
 
 #if 1
     printf("Initializing network driver...\n");
-    e1000_init();
-    uint8_t mac[6];
-    mac[0] = 0x52;
-    mac[1] = 0x54;
-    mac[2] = 0x00;
-    mac[3] = 0x12;
-    mac[4] = 0x34;
-    mac[5] = 0x56;
-    char * str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    ethernet_send_packet(mac, str, strlen(str), 0x0021);
-    ethernet_send_packet(mac, str, strlen(str), 0x0021);
+    rtl8139_init();
+    uint8_t mac_addr[6];
+    get_mac_addr(mac_addr);
+    char * str = "aaaaaaaaaa";
+    ethernet_send_packet(mac_addr, str, strlen(str), 0x0021);
     printf("Packet sent\n");
 #endif
 

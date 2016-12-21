@@ -88,7 +88,7 @@ void allocate_page(page_directory_t * dir, uint32_t virtual_addr, uint32_t frame
         if(!kheap_enabled)
             table = dumb_kmalloc(sizeof(page_table_t), 1);
         else
-            table = (void*)kmalloc_a(sizeof(page_table_t));
+            table = kmalloc_a(sizeof(page_table_t));
 
         memset(table, 0, sizeof(page_table_t));
         // Remember, dumb_kmalloc returns a virtual address, but what we put into the paging structure, MUST BE, in terms of phsical address
