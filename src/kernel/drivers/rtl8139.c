@@ -16,6 +16,7 @@ void receive_packet() {
 
     // t points to the packet data
     t++;
+    printf("Printing packet at addr 0x%x\n", (uint32_t)t);
     xxd(t, packet_length);
     current_packet_ptr = (current_packet_ptr + packet_length + 4 + 3) & RX_READ_POINTER_MASK;
 

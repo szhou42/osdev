@@ -27,6 +27,16 @@ int ethernet_send_packet(uint8_t * dst_mac_addr, uint8_t * data, int len, uint16
     return len;
 }
 
+void ethernet_handle_packet(ethernet_frame_t * packet, int len) {
+    if(packet->type == ETHERNET_TYPE_ARP) {
+        void * data = packet + sizeof(ethernet_frame_t);
+        arp_handle_packet(data, len - sizeof(ethernet_frame_t));
+    }
+    if(packet->type == ETHERNET_TYPE_IP) {
+        // Handle ip packet
+    }
+}
+
 /*
  * Initialize the ethernet layer
  * */
