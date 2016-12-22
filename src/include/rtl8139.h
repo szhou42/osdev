@@ -73,10 +73,18 @@ typedef struct rtl8139_dev {
     int tx_cur;
 }rtl8139_dev_t;
 
+void rtl8139_send_packet(void * data, uint32_t len);
+
 void rtl8139_handler(register_t * reg);
 
 void rtl8139_init();
 
 void read_mac_addr();
+
+void receive_packet();
+
+void get_mac_addr();
+
+
 
 #endif

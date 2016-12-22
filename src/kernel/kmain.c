@@ -36,6 +36,7 @@ extern ata_dev_t primary_master;
 extern datetime_t current_datetime;
 
 #define MSIZE 48 * M
+#define GUI_MODE 0
 
 void test_bios32() {
     register16_t reg = {0};
@@ -138,7 +139,7 @@ int kmain(multiboot_info_t * mb_info) {
     }
 #endif
 
-#if 0
+#if GUI_MODE
     vesa_init();
     compositor_init();
 

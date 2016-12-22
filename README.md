@@ -27,7 +27,7 @@ Vagrant.configure(2) do |config|
   config.vm.box = "ubuntu/trusty32"
   config.ssh.forward_x11 = true
   config.vm.provider "virtualbox" do |vb|
-    vb.memory = "1024"
+    vb.memory = "4096"
   end
 end
 ```
@@ -39,6 +39,7 @@ vagrant ssh
 
 ## Preparation
 Simpleos use elf-i686-gcc as cross-compiler, please build the cross compiler on your system first.
+For some reasons, I used a different compiler name in my makefile, just make sure to replace it with yours.
 
 <a href = "http://wiki.osdev.org/GCC_Cross-Compiler">How to build a cross compiler</a>  
 Or, a rewritten/translated version of the above wiki article in Simplified Chinese  
@@ -50,7 +51,23 @@ Then, install nasm
 sudo apt-get install nasm
 ```
 
-Now clone the repo to your vm and simply run ./compile.sh to compile the kernel, and then choose one of the following simulator to boot simpleos. QEMU is more recommended.
+Now clone the repo to your vm and simply run ./compile.sh to compile the kernel, 
+
+Run the following script to generate 4 hard disk image
+```
+./mkext2image.sh
+```
+
+If you would like to run the os in GUI mode, set the constant GUI_MODE (defined in kmain.c) to 1. 
+Also, be sure to copy a file called wallpaper.bmp(must be 1024 * 768) to ext2_hda.img.  
+Here is how to do it:
+```
+./mount_disk.sh
+sudo cp wallpaper.bmp /mnt
+./umount_disk.sh
+```
+
+And then choose one of the following simulator to boot simpleos. QEMU is more recommended.
 
 ## QEMU
 1.  Run sudo apt-get install qemu-system
@@ -60,7 +77,7 @@ Now clone the repo to your vm and simply run ./compile.sh to compile the kernel,
 ### Debug with QEMU
 1. run ./debug_qemu.sh
 
-## Bochs
+## Bochs(don't do this, somehow i deleted the grub image, just use QEMU :) )
 1.  sudo apt-get install bochs
 2.  sudo apt-get install bochs-x
 3.  sudo apt-get install bochs-sdl
@@ -101,7 +118,7 @@ Now clone the repo to your vm and simply run ./compile.sh to compile the kernel,
 &#160; &#160; &#160; &#160;9 stadard input/output stuff                                             []  
 
 #### Network protocols  
-&#160; &#160; &#160; &#160;0 Send/Recv raw packets  []  
+&#160; &#160; &#160; &#160;0 Send/Recv raw packets  [✔]  
 &#160; &#160; &#160; &#160;1 IP                     []  
 &#160; &#160; &#160; &#160;2 UDP                    []  
 &#160; &#160; &#160; &#160;3 ARP                    []  

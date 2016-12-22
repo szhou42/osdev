@@ -18,7 +18,7 @@ int ethernet_send_packet(uint8_t * dst_mac_addr, uint8_t * data, int len, uint16
 
     // Fill in type, let's assume it's always an IP diagram right now
     frame->type = protocol;
-    frame->type = 0x0021;
+    frame->type = ETHERNET_TYPE_ARP;
 
     // Send packet
     rtl8139_send_packet(frame, sizeof(ethernet_frame_t) + len);
@@ -29,6 +29,7 @@ int ethernet_send_packet(uint8_t * dst_mac_addr, uint8_t * data, int len, uint16
 
 void ethernet_handle_packet(ethernet_frame_t * packet, int len) {
     if(packet->type == ETHERNET_TYPE_ARP) {
+        printf("(ARP Packet)\n");
         void * data = packet + sizeof(ethernet_frame_t);
         arp_handle_packet(data, len - sizeof(ethernet_frame_t));
     }
