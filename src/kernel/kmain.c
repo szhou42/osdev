@@ -51,7 +51,7 @@ void test_bios32() {
 int kmain(multiboot_info_t * mb_info) {
 
     video_init();
-    printf("%s\n", yanqing_logo);
+    printf("%s\n", simpleos_logo);
 
     // Initialize everything (green)
     set_curr_color(LIGHT_GREEN);
