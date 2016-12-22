@@ -121,7 +121,7 @@ And then choose one of the following simulator to boot simpleos. QEMU is more re
 &#160; &#160; &#160; &#160;0 Send/Recv raw packets  [✔]  
 &#160; &#160; &#160; &#160;1 IP                     []  
 &#160; &#160; &#160; &#160;2 UDP                    []  
-&#160; &#160; &#160; &#160;3 ARP                    []  
+&#160; &#160; &#160; &#160;3 ARP                    [✔]  
 &#160; &#160; &#160; &#160;4 DHCP                   []  
 &#160; &#160; &#160; &#160;5 TCP                    []  
 &#160; &#160; &#160; &#160;6 HTTP                   []  

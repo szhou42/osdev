@@ -1,48 +1,63 @@
 #include <arp.h>
 #include <rtl8139.h>
 #include <network_utils.h>
+#include <string.h>
+
+arp_table_entry_t arp_table[512];
+int arp_table_size;
+int arp_table_curr;
 
 void arp_handle_packet(arp_packet_t * arp_packet, int len) {
-    // Reply arp request
+    char dst_hardware_addr[6];
+    char dst_protocol_addr[4];
+    // Save some packet field
+    memcpy(dst_hardware_addr, arp_packet->src_hardware_addr, 6);
+    memcpy(dst_protocol_addr, arp_packet->src_protocol_addr, 4);
+    // Reply arp request, if the ip address matches(have to hard code the IP eveywhere, because I don't have dhcp yet)
     if(ntohs(arp_packet->opcode) == ARP_REQUEST) {
-        // Save some packet field
-        char dst_hardware_addr[6];
-        char dst_protocol_addr[4];
-        memcpy(dst_hardware_addr, arp_packet->src_hardware_addr, 6);
-        memcpy(dst_protocol_addr, arp_packet->src_protocol_addr, 4);
+        uint32_t my_ip = 0x0e02000a;
+        if(memcmp(arp_packet->dst_protocol_addr, &my_ip, 4)) {
 
-        // Set source MAC address, IP address (hardcode the IP address as 10.2.2.3 until we really get one..)
-        get_mac_addr(arp_packet->src_hardware_addr);
-        arp_packet->src_protocol_addr[0] = 10;
-        arp_packet->src_protocol_addr[1] = 0;
-        arp_packet->src_protocol_addr[2] = 2;
-        arp_packet->src_protocol_addr[3] = 14;
+            // Set source MAC address, IP address (hardcode the IP address as 10.2.2.3 until we really get one..)
+            get_mac_addr(arp_packet->src_hardware_addr);
+            arp_packet->src_protocol_addr[0] = 10;
+            arp_packet->src_protocol_addr[1] = 0;
+            arp_packet->src_protocol_addr[2] = 2;
+            arp_packet->src_protocol_addr[3] = 14;
 
-        // Set destination MAC address, IP address
-        memcpy(arp_packet->dst_hardware_addr, dst_hardware_addr, 6);
-        memcpy(arp_packet->dst_protocol_addr, dst_protocol_addr, 4);
+            // Set destination MAC address, IP address
+            memcpy(arp_packet->dst_hardware_addr, dst_hardware_addr, 6);
+            memcpy(arp_packet->dst_protocol_addr, dst_protocol_addr, 4);
 
-        // Set opcode
-        arp_packet->opcode = htons(ARP_REPLY);
+            // Set opcode
+            arp_packet->opcode = htons(ARP_REPLY);
 
-        // Set lengths
-        arp_packet->hardware_addr_len = 6;
-        arp_packet->protocol_addr_len = 4;
+            // Set lengths
+            arp_packet->hardware_addr_len = 6;
+            arp_packet->protocol_addr_len = 4;
 
-        // Set hardware type
-        arp_packet->hardware_type = htons(HARDWARE_TYPE_ETHERNET);
+            // Set hardware type
+            arp_packet->hardware_type = htons(HARDWARE_TYPE_ETHERNET);
 
-        // Set protocol = IPv4
-        arp_packet->protocol = htons(ETHERNET_TYPE_IP);
+            // Set protocol = IPv4
+            arp_packet->protocol = htons(ETHERNET_TYPE_IP);
 
-        // Now send it with ethernet
-        ethernet_send_packet(dst_hardware_addr, arp_packet, sizeof(arp_packet_t) + 18, ETHERNET_TYPE_ARP);
-        memset((void*)arp_packet + sizeof(arp_packet_t), 0, 18);
-        printf("Replied Arp, the reply looks like this\n");
-        xxd(arp_packet, sizeof(arp_packet_t));
+            // Now send it with ethernet
+            ethernet_send_packet(dst_hardware_addr, arp_packet, sizeof(arp_packet_t), ETHERNET_TYPE_ARP);
+            printf("Replied Arp, the reply looks like this\n");
+            xxd(arp_packet, sizeof(arp_packet_t));
+        }
+        // Now, store the ip-mac address mapping relation
+        arp_table[arp_table_curr].ip_addr = *((uint32_t*)(dst_protocol_addr));
+        memcpy(&arp_table[arp_table_curr].ip_addr, dst_protocol_addr, 4);
+        memcpy(&arp_table[arp_table_curr++].mac_addr, dst_protocol_addr, 6);
+        if(arp_table_size < 512)
+            arp_table_size++;
+        // Wrap around
+        if(arp_table_curr >= 512)
+            arp_table_curr = 0;
     }
-}
-
-void arp_reply() {
-
+    else if(arp_packet->opcode == ARP_REPLY){
+        // May be we can handle the case where we get a reply after sending a request, but i don't think my os will ever need to do so...
+    }
 }

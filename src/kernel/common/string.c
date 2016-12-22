@@ -1,6 +1,19 @@
 #include <string.h>
 #include <system.h>
 
+/*
+ * Compare two buffer, return 1 if they're the same
+ * */
+int memcmp(uint8_t * data1, uint8_t * data2, int n) {
+    while(n--) {
+        if(*data1 != *data2)
+            return 0;
+        data1++;
+        data2++;
+    }
+    return 1;
+}
+
 void *memcpy(void *dst, void const *src, int n)
 {
 #if 1
