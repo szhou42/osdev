@@ -59,7 +59,7 @@ void read_mac_addr() {
 
     rtl8139_device.mac_addr[4] = mac_part2 >> 0;
     rtl8139_device.mac_addr[5] = mac_part2 >> 8;
-    printf("mac_part1: %x mac_part2: %x\n", mac_part1, mac_part2);
+    printf("MAC Address: %01x:%01x:%01x:%01x:%01x:%01x\n", rtl8139_device.mac_addr[0], rtl8139_device.mac_addr[1], rtl8139_device.mac_addr[2], rtl8139_device.mac_addr[3], rtl8139_device.mac_addr[4], rtl8139_device.mac_addr[5]);
 }
 
 void get_mac_addr(uint8_t * src_mac_addr) {

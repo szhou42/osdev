@@ -37,6 +37,7 @@ extern datetime_t current_datetime;
 
 #define MSIZE 48 * M
 #define GUI_MODE 0
+#define NETWORK_MODE 1
 
 void test_bios32() {
     register16_t reg = {0};
@@ -50,7 +51,7 @@ void test_bios32() {
 int kmain(multiboot_info_t * mb_info) {
 
     video_init();
-    printf("%s\n", simpleos_logo);
+    printf("%s\n", yanqing_logo);
 
     // Initialize everything (green)
     set_curr_color(LIGHT_GREEN);
@@ -101,7 +102,7 @@ int kmain(multiboot_info_t * mb_info) {
     //asm volatile("mov %%esp, %0" : "=r"(esp));
     //tss_set_stack(0x10, esp);
 
-#if 1
+#if NETWORK_MODE
     printf("Initializing network driver...\n");
     rtl8139_init();
     uint8_t mac_addr[6];
@@ -113,8 +114,9 @@ int kmain(multiboot_info_t * mb_info) {
     mac_addr[5] = 0xFF;
     get_mac_addr(mac_addr);
     char * str = "FUCK YOU!!!!!!!!!!!!!!";
-    ethernet_send_packet(mac_addr, str, strlen(str), 0x0021);
+    //ethernet_send_packet(mac_addr, str, strlen(str), 0x0021);
     printf("Packet sent\n");
+    for(;;);
 #endif
 
 #if 0

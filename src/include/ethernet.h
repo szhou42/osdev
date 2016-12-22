@@ -6,7 +6,7 @@
 #include <paging.h>
 #include <rtl8139.h>
 
-#define ETHERNET_TYPE_ARP 0x0608
+#define ETHERNET_TYPE_ARP 0x0806
 #define ETHERNET_TYPE_IP  0x0800
 
 #define HARDWARE_TYPE_ETHERNET 0x01

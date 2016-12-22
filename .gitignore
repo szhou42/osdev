@@ -13,3 +13,6 @@ dump.bin
 
 # Ignore bochs output
 bochsout.txt
+
+# Ignore tcpdump output
+*.pcap
