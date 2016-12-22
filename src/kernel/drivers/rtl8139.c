@@ -9,6 +9,10 @@ rtl8139_dev_t rtl8139_device;
 
 uint32_t current_packet_ptr;
 
+// Four TXAD register, you must use a different one to send packet each time(for example, use the first one, second... fourth and back to the first)
+uint8_t TSAD_array[4] = {0x20, 0x24, 0x28, 0x2C};
+uint8_t TSD_array[4] = {0x10, 0x14, 0x18, 0x1C};
+
 void receive_packet() {
     uint16_t * t = (uint16_t*)(rtl8139_device.rx_buffer + current_packet_ptr);
     // Skip packet header, get packet length
@@ -73,9 +77,10 @@ void rtl8139_send_packet(void * data, uint32_t len) {
     memcpy(transfer_data, data, len);
 
     // Second, fill in physical address of data, and length
-    uint32_t offset = rtl8139_device.tx_cur * 4;
-    outportl(rtl8139_device.io_base + 0x20 + offset, (uint32_t)phys_addr);
-    outportl(rtl8139_device.io_base + 0x10 + offset, len);
+    outportl(rtl8139_device.io_base + TSAD_array[rtl8139_device.tx_cur], (uint32_t)phys_addr);
+    outportl(rtl8139_device.io_base + TSD_array[rtl8139_device.tx_cur++], len);
+    if(rtl8139_device.tx_cur > 3)
+        rtl8139_device.tx_cur = 0;
 }
 
 /*
@@ -90,6 +95,9 @@ void rtl8139_init() {
     rtl8139_device.io_base = ret & (~0x3);
     rtl8139_device.mem_base = ret & (~0xf);
     printf("rtl8139 use %s access (base: %x)\n", (rtl8139_device.bar_type == 0)? "mem based":"port based", (rtl8139_device.bar_type != 0)?rtl8139_device.io_base:rtl8139_device.mem_base);
+
+    // Set current TSAD
+    rtl8139_device.tx_cur = 0;
 
     // Enable PCI Bus Mastering
     uint32_t pci_command_reg = pci_read(pci_rtl8139_device, PCI_COMMAND);
