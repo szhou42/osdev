@@ -25,20 +25,24 @@ int ethernet_send_packet(uint8_t * dst_mac_addr, uint8_t * data, int len, uint16
     rtl8139_send_packet(frame, sizeof(ethernet_frame_t) + len);
     kfree(frame);
 
-    printf("Sent an ethernet packet, it looks like this\n");
-    xxd(frame, sizeof(ethernet_frame_t) + len);
+    //printf("Sent an ethernet packet, it looks like this\n");
+    //xxd(frame, sizeof(ethernet_frame_t) + len);
 
     return len;
 }
 
 void ethernet_handle_packet(ethernet_frame_t * packet, int len) {
+    void * data = (void*) packet + sizeof(ethernet_frame_t);
+    int data_len = len - sizeof(ethernet_frame_t);
+    // ARP packet
     if(ntohs(packet->type) == ETHERNET_TYPE_ARP) {
         printf("(ARP Packet)\n");
-        void * data = (void*) packet + sizeof(ethernet_frame_t);
-        arp_handle_packet(data, len - sizeof(ethernet_frame_t));
+        arp_handle_packet(data, data_len);
     }
+    // IP packets(could be TCP, UDP or others)
     if(ntohs(packet->type) == ETHERNET_TYPE_IP) {
-        // Handle ip packet
+        printf("(IP Packet)\n");
+        ip_handle_packet(data, data_len);
     }
 }
 

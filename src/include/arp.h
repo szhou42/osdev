@@ -26,4 +26,8 @@ typedef struct arp_table_entry {
 
 void arp_handle_packet(arp_packet_t * arp_packet, int len);
 
+void arp_send_packet(uint8_t * dst_hardware_addr, uint8_t * dst_protocol_addr);
+
+int arp_lookup(uint8_t * ret_hardware_addr, uint8_t * ip_addr);
+
 #endif

@@ -14,6 +14,26 @@ uint32_t flip_long(uint32_t long_int) {
     return (first_byte << 24) | (second_byte << 16) | (third_byte << 8) | (fourth_byte);
 }
 
+/*
+ * Flip two parts within a byte
+ * For example, 0b11110000 will be 0b00001111 instead
+ * This is necessary because endiness is also relevant to byte, where there are two fields in one byte.
+ * number_bits: number of bits of the less significant field
+ * */
+uint8_t flip_byte(uint8_t byte, int num_bits) {
+    uint8_t t = byte << (8 - num_bits);
+    return t | (byte >> num_bits);
+}
+
+uint8_t htonb(uint8_t byte, int num_bits) {
+    return flip_byte(byte, num_bits);
+}
+
+uint8_t ntohb(uint8_t byte, int num_bits) {
+    return flip_byte(byte, 8 - num_bits);
+}
+
+
 uint16_t htons(uint16_t hostshort) {
     return flip_short(hostshort);
 }

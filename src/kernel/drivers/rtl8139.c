@@ -20,8 +20,8 @@ void receive_packet() {
 
     // Skip, packet header and packet length, now t points to the packet data
     t = t + 2;
-    printf("Printing packet at addr 0x%x\n", (uint32_t)t);
-    xxd(t, packet_length);
+    //printf("Printing packet at addr 0x%x\n", (uint32_t)t);
+    //xxd(t, packet_length);
 
     // Now, ethernet layer starts to handle the packet(be sure to make a copy of the packet, insteading of using the buffer)
     // and probabbly this should be done in a separate thread...
@@ -45,7 +45,7 @@ void rtl8139_handler(register_t * reg) {
         printf("Packet sent\n");
     }
     if (status & ROK) {
-        printf("Received packet\n");
+        //printf("Received packet\n");
         receive_packet();
     }
 

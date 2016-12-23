@@ -44,8 +44,10 @@ void arp_handle_packet(arp_packet_t * arp_packet, int len) {
 
             // Now send it with ethernet
             ethernet_send_packet(dst_hardware_addr, arp_packet, sizeof(arp_packet_t), ETHERNET_TYPE_ARP);
-            printf("Replied Arp, the reply looks like this\n");
-            xxd(arp_packet, sizeof(arp_packet_t));
+
+            // For debug:
+            //printf("Replied Arp, the reply looks like this\n");
+            //xxd(arp_packet, sizeof(arp_packet_t));
         }
         // Now, store the ip-mac address mapping relation
         arp_table[arp_table_curr].ip_addr = *((uint32_t*)(dst_protocol_addr));
@@ -61,3 +63,47 @@ void arp_handle_packet(arp_packet_t * arp_packet, int len) {
         // May be we can handle the case where we get a reply after sending a request, but i don't think my os will ever need to do so...
     }
 }
+
+void arp_send_packet(uint8_t * dst_hardware_addr, uint8_t * dst_protocol_addr) {
+    arp_packet_t * arp_packet = kmalloc(sizeof(arp_packet_t));
+
+    // Set source MAC address, IP address (hardcode the IP address as 10.2.2.3 until we really get one..)
+    get_mac_addr(arp_packet->src_hardware_addr);
+    arp_packet->src_protocol_addr[0] = 10;
+    arp_packet->src_protocol_addr[1] = 0;
+    arp_packet->src_protocol_addr[2] = 2;
+    arp_packet->src_protocol_addr[3] = 14;
+
+    // Set destination MAC address, IP address
+    memcpy(arp_packet->dst_hardware_addr, dst_hardware_addr, 6);
+    memcpy(arp_packet->dst_protocol_addr, dst_protocol_addr, 4);
+
+    // Set opcode
+    arp_packet->opcode = htons(ARP_REQUEST);
+
+    // Set lengths
+    arp_packet->hardware_addr_len = 6;
+    arp_packet->protocol_addr_len = 4;
+
+    // Set hardware type
+    arp_packet->hardware_type = htons(HARDWARE_TYPE_ETHERNET);
+
+    // Set protocol = IPv4
+    arp_packet->protocol = htons(ETHERNET_TYPE_IP);
+
+    // Now send it with ethernet
+    ethernet_send_packet(dst_hardware_addr, (uint8_t*)arp_packet, sizeof(arp_packet_t), ETHERNET_TYPE_ARP);
+}
+
+int arp_lookup(uint8_t * ret_hardware_addr, uint8_t * ip_addr) {
+    uint32_t ip_entry = *((uint32_t*)(ip_addr));
+        for(int i = 0; i < 512; i++) {
+            if(arp_table[i].ip_addr == ip_entry) {
+                memcpy(ret_hardware_addr, &arp_table[i].mac_addr, 6);
+                return 1;
+            }
+        }
+    return 0;
+}
+
+
