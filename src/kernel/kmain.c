@@ -28,7 +28,7 @@
 #include <rtc.h>
 #include <rtl8139.h>
 #include <ethernet.h>
-#include <ethernet.h>
+#include <ip.h>
 
 
 extern uint8_t * bitmap;
@@ -105,6 +105,7 @@ int kmain(multiboot_info_t * mb_info) {
 #if NETWORK_MODE
     printf("Initializing network driver...\n");
     rtl8139_init();
+
     uint8_t mac_addr[6];
     mac_addr[0] = 0xAA;
     mac_addr[1] = 0xBB;
@@ -113,9 +114,16 @@ int kmain(multiboot_info_t * mb_info) {
     mac_addr[4] = 0xEE;
     mac_addr[5] = 0xFF;
     get_mac_addr(mac_addr);
-    char * str = "FUCK YOU!!!!!!!!!!!!!!";
+
+    uint8_t ip_addr[6];
+    ip_addr[0] = 10;
+    ip_addr[1] = 0;
+    ip_addr[2] = 2;
+    ip_addr[3] = 15;
+    char * str = "hello_ip";
     //ethernet_send_packet(mac_addr, str, strlen(str), 0x0021);
-    printf("Packet sent\n");
+    //printf("Packet sent\n");
+    ip_send_packet(ip_addr, str, strlen(str));
     for(;;);
 #endif
 

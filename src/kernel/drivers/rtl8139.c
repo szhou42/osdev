@@ -38,7 +38,7 @@ void receive_packet() {
 }
 
 void rtl8139_handler(register_t * reg) {
-    printf("RTL8139 interript was fired !!!! \n");
+    //printf("RTL8139 interript was fired !!!! \n");
     uint16_t status = inports(rtl8139_device.io_base + 0x3e);
 
     if(status & TOK) {

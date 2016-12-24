@@ -13,10 +13,24 @@ void get_ip_str(char * ip_str, uint8_t * ip) {
 }
 
 uint16_t ip_calculate_checksum(ip_packet_t * packet) {
-    return 0;
+    // Treat the packet header as a 2-byte-integer array
+    // Sum all integers up and flip all bits
+    int array_size = sizeof(ip_packet_t) / 2;
+    uint16_t * array = (uint16_t*)packet;
+    uint8_t * array2 = (uint8_t*)packet;
+    uint32_t sum = 0;
+    for(int i = 0; i < array_size; i++) {
+        sum += flip_short(array[i]);
+    }
+    uint32_t carry = sum >> 16;
+    sum = sum & 0x0000ffff;
+    sum = sum + carry;
+    uint16_t ret = ~sum;
+    return ret;
 }
+
 void ip_send_packet(uint8_t * dst_ip, void * data, int len) {
-    int arp_sent = 0;
+    int arp_sent = 3;
     ip_packet_t * packet = kmalloc(sizeof(ip_packet_t) + len);
     memset(packet, 0, sizeof(ip_packet_t));
     packet->version = IP_IPV4;
@@ -24,19 +38,18 @@ void ip_send_packet(uint8_t * dst_ip, void * data, int len) {
     packet->ihl = 5;
     // Don't care, set to 0
     packet->tos = 0;
-    packet->length = htons(sizeof(ip_packet_t) + len);
+    packet->length = sizeof(ip_packet_t) + len;
     // Used for ip fragmentation, don't care now
     packet->id = 0;
     // Tell router to not divide the packet, and this is packet is the last piece of the fragments.
-    packet->flags = IP_PACKET_NO_FRAGMENT | IP_IS_LAST_FRAGMENT;
+    packet->flags = 0;
     packet->fragment_offset_high = 0;
     packet->fragment_offset_low = 0;
 
-    packet->ttl = 100;
+    packet->ttl = 64;
     // Normally there should be some other protocols embedded in ip protocol, we set it to udp for now, just for testing, the data could contain strings and anything
     // Once we test the ip packeting sending works, we'll replace it with a packet corresponding to some protocol
     packet->protocol = PROTOCOL_UDP;
-    packet->header_checksum = htons(ip_calculate_checksum(packet));
 
     memcpy(packet->src_ip, my_ip, 4);
     memcpy(packet->dst_ip, test_target_ip, 4);
@@ -44,6 +57,17 @@ void ip_send_packet(uint8_t * dst_ip, void * data, int len) {
     void * packet_data = (void*)packet + packet->ihl * 4;
     memcpy(packet_data, data, len);
 
+    // Fix packet data order
+    *((uint8_t*)(&packet->version_ihl_ptr)) = htonb(*((uint8_t*)(&packet->version_ihl_ptr)), 4);
+    *((uint8_t*)(packet->flags_fragment_ptr)) = htonb(*((uint8_t*)(packet->flags_fragment_ptr)), 3);
+    packet->length = htons(sizeof(ip_packet_t) + len);
+
+    // Make sure checksum is 0 before checksum calculation
+    packet->header_checksum = 0;
+    packet->header_checksum = htons(ip_calculate_checksum(packet));
+
+
+    //packet->header_checksum = htons(cksum(packet));
     // Don't care to pad, because we don't use the option field in ip packet
     /*
      * If the ip is in the same network, the destination mac address is the routers's mac address, the router'll figure out how to route the packet
@@ -57,14 +81,16 @@ void ip_send_packet(uint8_t * dst_ip, void * data, int len) {
 
     // Loop, until we get the mac address of the destination (this should probably done in a separate :))
     while(!arp_lookup(dst_hardware_addr, dst_ip)) {
-        if(!arp_sent) {
-            arp_sent = 1;
+        if(arp_sent != 0) {
+            arp_sent--;
             // Send an arp packet here
             arp_send_packet(zero_hardware_addr, dst_ip);
         }
     }
+    printf("IP Packet Sent...(checksum: %x)", packet->header_checksum);
     // Got the mac address! Now send an ethernet packet
-    ethernet_send_packet(dst_hardware_addr, packet, packet->length, ETHERNET_TYPE_IP);
+    ethernet_send_packet(dst_hardware_addr, packet, htons(packet->length), ETHERNET_TYPE_IP);
+    xxd(packet, ntohs(packet->length));
 }
 
 
@@ -73,7 +99,7 @@ void ip_handle_packet(ip_packet_t * packet) {
     *((uint8_t*)(&packet->version_ihl_ptr)) = ntohb(*((uint8_t*)(&packet->version_ihl_ptr)), 4);
     *((uint8_t*)(packet->flags_fragment_ptr)) = ntohb(*((uint8_t*)(packet->flags_fragment_ptr)), 3);
 
-    printf("The whole ip packet: \n");
+    printf("Receive: the whole ip packet \n");
     xxd(packet, ntohs(packet->length));
     // Now, the ip packet handler simply dumps ip header info and the data with xxd and display on screen
     // Dump source ip, data, checksum
