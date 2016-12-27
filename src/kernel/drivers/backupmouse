@@ -64,17 +64,19 @@ void mouse_handler(register_t * regs)
     int cursor_curr_width = CURSOR_WIDTH;
     int cursor_curr_height = CURSOR_HEIGHT;
 
-
     // Update prev state
-    if(mouse_cycle == 0)
-        memcpy(prev_button_state, curr_button_state, 3);
+    memcpy(prev_button_state, curr_button_state, 3);
 
     // Fill message
     msg.msg_type = WINMSG_MOUSE;
     msg.cursor_x = mouse_x;
     msg.cursor_y = mouse_y;
+    msg.change_y = 0;
+    msg.change_y = 0;
 
-    switch(mouse_cycle) {
+
+    switch(mouse_cycle)
+    {
         case 0:
             mouse_byte[0] = mouse_read();
             // Inform the window message handler about mouse operation
@@ -99,12 +101,10 @@ void mouse_handler(register_t * regs)
             break;
         case 2:
             mouse_byte[2]= mouse_read();
-
-            // Update mouse position
+            msg.change_x = mouse_byte[1];
+            msg.change_y = mouse_byte[2];
             mouse_x = mouse_x + mouse_byte[1];
             mouse_y = mouse_y - mouse_byte[2];
-
-            // Adjust mouse position
             if(mouse_x < 0)
                 mouse_x = 0;
             if(mouse_y < 0)
@@ -117,12 +117,10 @@ void mouse_handler(register_t * regs)
             // Repaint previous mouse region
             repaint(next_mouse_region.r);
             rects[0] = next_mouse_region.r;
-
             // Save current mouse rect region
             next_mouse_region.r.x = mouse_x;
             next_mouse_region.r.y = mouse_y;
 
-            // Adjust cursor size
             if(mouse_x + CURSOR_WIDTH > screen_width - 1) {
                 cursor_curr_width = screen_width - mouse_x;
             }
@@ -134,23 +132,21 @@ void mouse_handler(register_t * regs)
             next_mouse_region.r.width = cursor_curr_width;
             next_mouse_region.r.height = cursor_curr_height;
             current_mouse_region.r = next_mouse_region.r;
+            //copy_rect(next_mouse_region.region, next_mouse_region.r);
             memsetdw(next_mouse_region.region, 0x0000ff00, CURSOR_WIDTH * CURSOR_HEIGHT);
 
             // Repaint current mouse region
             repaint(next_mouse_region.r);
-
             // Actually draw the mouse in here
             draw_mouse();
-
             // Only update the two rectangle video memory
             rects[1] = current_mouse_region.r;
             video_memory_update(rects, 2);
             // May be send a mouse move message to windows in here, if needed.
-
             mouse_cycle = 0;
             break;
     }
-    if(mouse_cycle == 0) {
+    if(mouse_cycle == 2) {
         if(left_button_down()) {
             msg.sub_type = WINMSG_MOUSE_LEFT_BUTTONDOWN;
         }
@@ -171,7 +167,9 @@ void mouse_handler(register_t * regs)
         }
         msg.window = query_window_by_point(mouse_x, mouse_y);
         window_message_handler(&msg);
+        mouse_cycle = 0;
     }
+
 }
 
 void mouse_write(uint8_t a_write) //unsigned char

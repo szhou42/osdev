@@ -11,6 +11,12 @@
 #define CURSOR_WIDTH 32
 #define CURSOR_HEIGHT 32
 
+
+#define MOUSE_LEFT_BUTTON_CHANGE 0
+#define MOUSE_RIGHT_BUTTON_CHANGE 1
+#define MOUSE_MIDDLE_BUTTON_CHANGE 2
+#define MOUSE_POSITION_CHANGE 3
+
 typedef struct cursor{
     int x;
     int y;

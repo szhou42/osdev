@@ -32,39 +32,45 @@ uint32_t * intermediate_framebuffer;
 uint32_t title_bar_colors[18] = {0x00EDEDED, 0x00EBEBEB, 0x00E9E9E9, 0x00E7E7E7, 0x00E6E6E6, 0x00E4E4E4, 0x00E3E3E3, 0x00E1E1E1, 0x00DFDFDF, 0x00DDDDDD, 0x00DCDCDC,\
     0x00DADADA, 0x00D8D8D8, 0x00D7D7D7, 0x00D6D6D6, 0x00D5D5D5, 0x00C7C7C7, 0x00D7D7D7};
 
+rect_t rects[2];
 
 /*
  * The window needs to receive user inputs like mouse movement, keyboard keypress, and others.
  * */
 void window_message_handler(winmsg_t * msg) {
     window_t * w = msg->window;
+    // Translate the cursor_x and cursor_y to base on the window's coord, not the screen's coord
+    point_t p = get_canonical_coordinates(w);
+    int cursor_x = msg->cursor_x - p.x;
+    int cursor_y = msg->cursor_y - p.y;
+
+    rect_t r = rect_create(0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
     switch(msg->msg_type) {
         case WINMSG_MOUSE:
-            if(msg->sub_type == WINMSG_MOUSE_RIGHTCLICK) {
+            if(msg->sub_type == WINMSG_MOUSE_RIGHT_BUTTONUP) {
                 // Do somethig when mouse right click
-                display_all_window();
+                //display_all_window();
             }
-            if(msg->sub_type == WINMSG_MOUSE_LEFTCLICK) {
-                // Translate the cursor_x and cursor_y to base on the window's coord, not the screen's coord
-                point_t p = get_canonical_coordinates(w);
-                int cursor_x = msg->cursor_x - p.x;
-                int cursor_y = msg->cursor_y - p.y;
+            if(msg->sub_type == WINMSG_MOUSE_LEFT_BUTTON_HELDDOWN) {
+                // If cursor is at the title bar, move window
+                // Title bar
+                r.x = TITLE_BAR_HEIGHT * 2;
+                r.width = w->width - r.x;
+                if(is_point_in_rect(cursor_x, cursor_y, &r)) {
+                    move_window(w, w->x + msg->change_x, w->y + msg->change_y);
+                }
 
-                if(w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT){
+            }
+            if(msg->sub_type == WINMSG_MOUSE_LEFT_BUTTONUP) {
+                if((w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT) && strcmp(w->name, "desktop_bar") != 0){
                     // Close button
-                    rect_t r = rect_create(0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
                     if(w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT) {
                         if(is_point_in_rect(cursor_x, cursor_y, &r)) {
                             close_window(msg->window);
                         }
                     }
-                    // Maximize button
-                    r.x = TITLE_BAR_HEIGHT;
-                    if(is_point_in_rect(cursor_x, cursor_y, &r)) {
-                        maximize_window(msg->window);
-                    }
                     // Minimize button
-                    r.x = TITLE_BAR_HEIGHT * 2;
+                    r.x = TITLE_BAR_HEIGHT;
                     if(is_point_in_rect(cursor_x, cursor_y, &r)) {
                         minimize_window(msg->window);
                     }
@@ -79,7 +85,6 @@ void window_message_handler(winmsg_t * msg) {
                         // Get parent and close
                         close_window(w->parent);
                     }
-
                 }
             }
 
@@ -131,7 +136,6 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
     w->type = type;
     w->parent = parent;
     w->is_minimized = 0;
-    w->is_maximized = 0;
 
     w->frame_buffer = kmalloc(width * height * 4);
     if(parent != NULL) {
@@ -209,15 +213,6 @@ void window_add_close_button(window_t * w) {
  * Draw a minimize button for headline
  * */
 void window_add_minimize_button(window_t * w) {
-    set_fill_color(0x0000ff00);
-    canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
-    draw_rect(&canvas, TITLE_BAR_HEIGHT * 2, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
-}
-
-/*
- * Draw a close button for headline
- * */
-void window_add_maximize_button(window_t * w) {
     set_fill_color(0x00ffff00);
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
     draw_rect(&canvas, TITLE_BAR_HEIGHT, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
@@ -260,7 +255,7 @@ void recur_add_under_windows(window_t * w, gtreenode_t * subroot) {
  * Now, i m just going to draw it in the screen frame buffer
  * */
 void window_display(window_t * w) {
-    if(w->is_minimized) return;
+    if(w->is_minimized || w->parent->is_minimized) return;
     set_fill_color(w->border_color);
 
 
@@ -305,7 +300,6 @@ void display_all_window() {
         window_display(windows_array[i]);
     }
 
-    video_memory_update(NULL, 0);
 }
 
 /*
@@ -345,12 +339,15 @@ void set_window_fillcolor(window_t * w, uint32_t color) {
 void move_window(window_t * w, int x, int y) {
     int oldx = w->x;
     int oldy = w->y;
-
+    int oldw = w->width;
+    int oldh = w->height;
     w->x = x;
     w->y = y;
 
-    repaint(rect_create(oldx, oldy, w->width, w->height));
-    repaint(rect_create(w->x, w->y, w->width, w->height));
+    display_all_window();
+    rects[0] = rect_create(oldx, oldy, oldw, oldh);
+    rects[1] = rect_create(x, y, oldw, oldh);
+    video_memory_update(rects, 2);
 }
 
 
@@ -359,26 +356,15 @@ void move_window(window_t * w, int x, int y) {
  */
 void minimize_window(window_t * w) {
     w->is_minimized = 1;
-    repaint(rect_create(w->x, w->y, w->width, w->height));
-}
-
-
-/*
- * Maximize window, this doesn't work yet
- */
-void maximize_window(window_t * w) {
-    if(w->is_maximized == 1) {
-        // Restore original size
-        resize_window(w, w->original_width, w->original_height);
-        w->is_maximized = 0;
-    }
-    else {
-        // Full screen
-        w->original_width = w->width;
-        w->original_height = w->height;
-        resize_window(w, 1024, 768);
-        w->is_maximized = 1;
-    }
+    point_t p = get_canonical_coordinates(w);
+    int oldx = p.x;
+    int oldy = p.y;
+    int oldw = w->width;
+    int oldh = w->height;
+    display_all_window();
+    rects[0] = rect_create(oldx, oldy, oldw, oldh);
+    //video_memory_update(rects, 1);
+    video_memory_update(NULL, 0);
 }
 
 
@@ -393,8 +379,10 @@ void close_window(window_t * w) {
     int oldh = w->height;
     // Remove the window from tree
     tree_remove(windows_tree, w->self);
-    //repaint(rect_create(oldx, oldy, oldw, oldh));
     display_all_window();
+    rects[0] = rect_create(oldx, oldy, oldw, oldh);
+    //video_memory_update(rects, 1);
+    video_memory_update(NULL, 0);
 }
 
 /*
@@ -482,12 +470,14 @@ void repaint(rect_t r) {
 void find_possible_windows(int x, int y, gtreenode_t * subroot, window_t ** possible_windows, int * num) {
     window_t * curr_w = subroot->value;
 
-    if(is_point_in_window(x, y, curr_w)) {
-        possible_windows[*num] = curr_w;
-        (*num)++;
-    }
-    foreach(child, subroot->children) {
-        find_possible_windows(x, y, child->val, possible_windows, num);
+    if(!curr_w->is_minimized) {
+        if(is_point_in_window(x, y, curr_w)) {
+            possible_windows[*num] = curr_w;
+            (*num)++;
+        }
+        foreach(child, subroot->children) {
+            find_possible_windows(x, y, child->val, possible_windows, num);
+        }
     }
 }
 
@@ -584,9 +574,9 @@ void video_memory_update(rect_t * rects, int len) {
     else {
         for(int i = 0; i < len; i++) {
             rect_t rect = rects[i];
-            for(int j = rect.x;  j < rect.x + rect.width; j++) {
-                for(int k = rect.y; k < rect.y + rect.height; k++) {
-                    int idx = get_pixel_idx(&canvas, j, k);
+            for(int j = rect.y;  j < rect.y + rect.height; j++) {
+                for(int k = rect.x; k < rect.x + rect.width; k++) {
+                    int idx = get_pixel_idx(&canvas, k, j);
                     if(intermediate_framebuffer[idx] != 0x00000000) {
                         screen[idx] = intermediate_framebuffer[idx];
                     }

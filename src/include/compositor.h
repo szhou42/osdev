@@ -21,8 +21,12 @@ extern uint32_t fill_color;
 
 #define WINMSG_MOUSE 0
 #define WINMSG_MOUSE_MOVE 0
-#define WINMSG_MOUSE_LEFTCLICK 1
-#define WINMSG_MOUSE_RIGHTCLICK 2
+#define WINMSG_MOUSE_LEFT_BUTTONDOWN 1
+#define WINMSG_MOUSE_RIGHT_BUTTONDOWN 2
+#define WINMSG_MOUSE_LEFT_BUTTONUP 3
+#define WINMSG_MOUSE_RIGHT_BUTTONUP 4
+#define WINMSG_MOUSE_LEFT_BUTTON_HELDDOWN 3
+#define WINMSG_MOUSE_RIGHT_BUTTON_HELDDOWN 4
 #define WINMSG_MOUSE_DOUBLECLICK 2
 
 #define WINMSG_KEYBOARD 1
@@ -97,6 +101,9 @@ typedef struct winmsg {
     // Cursor position when the event happens
     int cursor_x;
     int cursor_y;
+
+    int change_x;
+    int change_y;
 
     // Involved window
     window_t * window;
