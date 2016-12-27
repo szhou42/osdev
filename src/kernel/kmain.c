@@ -36,8 +36,8 @@ extern ata_dev_t primary_master;
 extern datetime_t current_datetime;
 
 #define MSIZE 48 * M
-#define GUI_MODE 0
-#define NETWORK_MODE 1
+#define GUI_MODE 1
+#define NETWORK_MODE 0
 
 void test_bios32() {
     register16_t reg = {0};

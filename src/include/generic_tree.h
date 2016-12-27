@@ -24,4 +24,12 @@ gtreenode_t * tree_find_parent_recur(gtree_t * tree, gtreenode_t * remove_node, 
 
 void tree_remove(gtree_t * tree, gtreenode_t * remove_node);
 
+void tree2list_recur(gtreenode_t * subroot, list_t * list);
+
+void tree2list(gtree_t * tree, list_t * list);
+
+void tree2array(gtree_t * tree, void ** array, int * size);
+
+void tree2array_recur(gtreenode_t * subroot, void ** array, int * size);
+
 #endif

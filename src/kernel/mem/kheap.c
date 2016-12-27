@@ -159,7 +159,6 @@ void kheap_init(void * start, void * end, void * max) {
     heap_end = end;
     heap_max = max;
     heap_curr = start;
-
     kheap_enabled = 1;
 }
 

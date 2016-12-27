@@ -39,11 +39,10 @@ void mouse_init() {
     next_mouse_region.r.y = mouse_y;
     next_mouse_region.r.width = 32;
     next_mouse_region.r.height = 32;
-    next_mouse_region.region = kmalloc(32*32);
-    //copy_rect(next_mouse_region.region, next_mouse_region.r);
+    next_mouse_region.region = kmalloc(32 * 32 * 4);
     memsetdw(next_mouse_region.region, 0x0000ff00, 32*32);
     // Cursoe icon
-    cursor_icon = bitmap_create("/cursor.bmp");
+    cursor_icon = bitmap_create("/cursor4.bmp");
     current_mouse_region.r = next_mouse_region.r;
     //current_mouse_region.region = (uint32_t*)cursor_icon->image_bytes;
     bitmap_to_framebuffer2(cursor_icon, current_mouse_region.region);
@@ -81,6 +80,7 @@ void mouse_handler(register_t * regs)
 {
     static uint8_t mouse_cycle = 0;
     static char mouse_byte[3];
+    rect_t rects[2];
     switch(mouse_cycle)
     {
         winmsg_t msg;
@@ -143,7 +143,7 @@ void mouse_handler(register_t * regs)
 
             // Repaint previous mouse region
             repaint(next_mouse_region.r);
-            printf("I think the above line crash");
+            rects[0] = next_mouse_region.r;
             // Save current mouse rect region
             next_mouse_region.r.x = mouse_x;
             next_mouse_region.r.y = mouse_y;
@@ -157,6 +157,9 @@ void mouse_handler(register_t * regs)
             repaint(next_mouse_region.r);
             // Actually draw the mouse in here
             draw_mouse();
+            // Only update the two rectangle video memory
+            rects[1] = current_mouse_region.r;
+            video_memory_update(rects, 2);
 
             printf("Your mouse is now in(%d, %d)\n", mouse_x, mouse_y);
 

@@ -74,10 +74,12 @@ typedef struct window {
     int is_maximized;
 
     gtreenode_t * self;
+
     // Keep track of a list of windows that's under/above this window()
     list_t * under_windows;
     list_t * above_windows;
 
+    int depth;
 }window_t;
 
 /*
@@ -163,4 +165,7 @@ window_t * alertbox_create(window_t * parent, int x, int y, char * title, char *
 point_t get_relative_coordinates(window_t * w, int x, int y);
 
 int is_window_overlap(window_t * w1, window_t * w2);
+
+void video_memory_update();
+
 #endif

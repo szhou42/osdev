@@ -16,16 +16,21 @@
  * */
 
 gtree_t * windows_tree;
+list_t * windows_list;
+window_t * windows_array[200];
 canvas_t canvas;
 
 // Keep a reference to desktop bar
 window_t * desktop_bar;
 
+// Intermediate frame buffer
+uint32_t * intermediate_framebuffer;
+
 /*
-* In OS X's window's title bar, each row's color increments, instead of having one color for the entire title bar
-*/
+ * In OS X's window's title bar, each row's color increments, instead of having one color for the entire title bar
+ */
 uint32_t title_bar_colors[18] = {0x00EDEDED, 0x00EBEBEB, 0x00E9E9E9, 0x00E7E7E7, 0x00E6E6E6, 0x00E4E4E4, 0x00E3E3E3, 0x00E1E1E1, 0x00DFDFDF, 0x00DDDDDD, 0x00DCDCDC,\
-0x00DADADA, 0x00D8D8D8, 0x00D7D7D7, 0x00D6D6D6, 0x00D5D5D5, 0x00C7C7C7, 0x00D7D7D7};
+    0x00DADADA, 0x00D8D8D8, 0x00D7D7D7, 0x00D6D6D6, 0x00D5D5D5, 0x00C7C7C7, 0x00D7D7D7};
 
 
 /*
@@ -88,8 +93,8 @@ void window_message_handler(winmsg_t * msg) {
 }
 
 /*
-* Convenient function for creating an alertbox window
-*/
+ * Convenient function for creating an alertbox window
+ */
 window_t * alertbox_create(window_t * parent, int x, int y, char * title, char * text) {
     window_t * alertbox = window_create(parent, x, y, 200, 160, WINDOW_ALERT, "window_classic");
     window_add_headline(alertbox, "classic");
@@ -109,8 +114,8 @@ window_t * alertbox_create(window_t * parent, int x, int y, char * title, char *
 
 
 /*
-* Window create, given x,y, width,heigt, type, name, and parent window.
-*/
+ * Window create, given x,y, width,heigt, type, name, and parent window.
+ */
 window_t *  window_create(window_t * parent, int x, int y, int width, int height, int type, char * name) {
     gtreenode_t * subroot;
     // Allocate spae and initialize
@@ -139,7 +144,7 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
         else if(strcmp(name, "window_black") == 0)
             memsetdw(w->frame_buffer, 0x00000001, width * height);
         else if(strcmp(name, "window_classic") == 0)
-            memsetdw(w->frame_buffer, 0x00EEEEEE, width * height);
+            memsetdw(w->frame_buffer, 0x00D5D5D5, width * height);
         else if(strcmp(name, "window_xp") == 0)
             memsetdw(w->frame_buffer, 0x00F7F3F0, width * height);
         else if(strcmp(name, "alertbox_button") == 0)
@@ -166,6 +171,7 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
 
     // Loop through all other windows in the tree, if overlap, add them to list w->under_windows
     add_under_windows(w);
+    w->depth = 0;
 
     if(strcmp(w->name, "desktop_bar") == 0)
         desktop_bar = w;
@@ -219,23 +225,29 @@ void window_add_maximize_button(window_t * w) {
 
 
 /*
-* Recursively find out what windows are under window w
-*/
+ * Recursively find out what windows are under window w
+ */
 void add_under_windows(window_t * w) {
     recur_add_under_windows(w, windows_tree->root);
 }
 
 /*
-* Helper function for add_under_windows
-*/
+ * Helper function for add_under_windows
+ */
 void recur_add_under_windows(window_t * w, gtreenode_t * subroot) {
     // Stop exploring any branches under w
     window_t * curr_w = subroot->value;
     if(curr_w == w) return;
 
     if(is_window_overlap(w, curr_w)) {
-        list_insert_back(w->under_windows, curr_w);
-        list_insert_back(curr_w->above_windows, w);
+        // Only add to the list if they are not already there
+        if(!list_contain(w->under_windows, curr_w)) {
+            list_insert_back(w->under_windows, curr_w);
+        }
+        if(!list_contain(w->above_windows, curr_w)) {
+            list_insert_back(curr_w->above_windows, w);
+            curr_w->depth = list_size(curr_w->above_windows);
+        }
     }
     foreach(child, subroot->children) {
         recur_add_under_windows(w, child->val);
@@ -263,9 +275,9 @@ void window_display(window_t * w) {
         rect_reg.r.width = w->width;
         rect_reg.r.height = w->height;
         rect_reg.region = w->frame_buffer;
-        //draw_rect_pixels(&canvas, &rect_reg);
-        repaint(rect_reg.r);
-        display_recur(w->self);
+        draw_rect_pixels(&canvas, &rect_reg);
+        //repaint(rect_reg.r);
+        //display_recur(w->self);
     }
 }
 
@@ -274,14 +286,31 @@ void window_display(window_t * w) {
  * This is slow! And ! It doesn't consider the case where windows overlap with each other
  * */
 void display_all_window() {
-    // Display super window and all its children
-    // How many jiffies this take?
-    window_display(get_super_window());
+    //window_display(get_super_window());
+    // Get a list of windows
+    int size = 0;
+    tree2array(windows_tree, (void**)windows_array, &size);
+    // Bubble sort window list, by depth
+    for(int i = 0; i < size - 1; i++) {
+        for(int j = 0; j < size - 1; j++) {
+            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
+                window_t * swap = windows_array[j];
+                windows_array[j] = windows_array[j + 1];
+                windows_array[j + 1] = swap;
+            }
+        }
+    }
+
+    for(int i = 0; i < size; i++) {
+        window_display(windows_array[i]);
+    }
+
+    video_memory_update(NULL, 0);
 }
 
 /*
-* Helper function for display_all_window
-*/
+ * Helper function for display_all_window
+ */
 void display_recur(gtreenode_t * t) {
     foreach(child, t->children) {
         gtreenode_t * node = child->val;
@@ -291,8 +320,8 @@ void display_recur(gtreenode_t * t) {
 }
 
 /*
-* Getter for super window, it's esentially the desktop
-*/
+ * Getter for super window, it's esentially the desktop
+ */
 window_t * get_super_window() {
     return windows_tree->root->value;
 }
@@ -303,16 +332,16 @@ window_t * get_desktop_bar() {
 
 
 /*
-* The fill color is used when I drew window directly to the screen buffer, it's deprecated now.
-*/
+ * The fill color is used when I drew window directly to the screen buffer, it's deprecated now.
+ */
 void set_window_fillcolor(window_t * w, uint32_t color) {
     w->fill_color = color;
 }
 
 
 /*
-* Move window to a start at (x,y)
-*/
+ * Move window to a start at (x,y)
+ */
 void move_window(window_t * w, int x, int y) {
     int oldx = w->x;
     int oldy = w->y;
@@ -326,8 +355,8 @@ void move_window(window_t * w, int x, int y) {
 
 
 /*
-* Minimize window
-*/
+ * Minimize window
+ */
 void minimize_window(window_t * w) {
     w->is_minimized = 1;
     repaint(rect_create(w->x, w->y, w->width, w->height));
@@ -335,8 +364,8 @@ void minimize_window(window_t * w) {
 
 
 /*
-* Maximize window, this doesn't work yet
-*/
+ * Maximize window, this doesn't work yet
+ */
 void maximize_window(window_t * w) {
     if(w->is_maximized == 1) {
         // Restore original size
@@ -354,8 +383,8 @@ void maximize_window(window_t * w) {
 
 
 /*
-* Different from minimize_window, close_window actually removes the window from the window tree,
-*/
+ * Different from minimize_window, close_window actually removes the window from the window tree,
+ */
 void close_window(window_t * w) {
     point_t p = get_canonical_coordinates(w);
     int oldx = p.x;
@@ -364,12 +393,13 @@ void close_window(window_t * w) {
     int oldh = w->height;
     // Remove the window from tree
     tree_remove(windows_tree, w->self);
-    repaint(rect_create(oldx, oldy, oldw, oldh));
+    //repaint(rect_create(oldx, oldy, oldw, oldh));
+    display_all_window();
 }
 
 /*
-* Resize window, this function doesn't work now after I start to give frame buffer to every window, don't use it for now
-*/
+ * Resize window, this function doesn't work now after I start to give frame buffer to every window, don't use it for now
+ */
 void resize_window(window_t * w, int new_width, int new_height) {
     int oldw = w->width;
     int oldh = w->height;
@@ -386,8 +416,7 @@ void resize_window(window_t * w, int new_width, int new_height) {
 void copy_rect(uint32_t * dst, rect_t r) {
     for(int i = r.y; i < r.y + r.height; i++) {
         for(int j = r.x; j < r.x + r.width; j++) {
-            *dst = screen[screen_width * i + j];
-            //*dst = 0x00FF00FF;
+            *dst = intermediate_framebuffer[screen_width * i + j];
             dst++;
         }
     }
@@ -437,7 +466,7 @@ void paint_pixel(canvas_t * canvas, int x, int y) {
  * */
 void repaint(rect_t r) {
     // This method is always called to repaint the whole screen, so canvas's frame buffer is always the screen
-    canvas_t canvas = canvas_create(1024, 768, screen);
+    canvas_t canvas = canvas_create(1024, 768, intermediate_framebuffer);
     for(int i = r.x; i < r.x + r.width; i++) {
         for(int j = r.y; j < r.y + r.height; j++) {
             paint_pixel(&canvas, i, j);
@@ -473,15 +502,15 @@ uint32_t get_window_pixel(window_t * w, int x, int y) {
 }
 
 /*
-* Is a point in the rectangle ?
-*/
+ * Is a point in the rectangle ?
+ */
 int is_point_in_rect(int point_x, int point_y, rect_t * r) {
     return (point_x >= r->x && point_x < r->x + r->width) && (point_y >= r->y && point_y < r->y + r->height);
 }
 
 /*
-* Is a point in the window?
-*/
+ * Is a point in the window?
+ */
 int is_point_in_window(int x, int y, window_t * w) {
     rect_t r;
     point_t p = get_canonical_coordinates(w);
@@ -494,17 +523,17 @@ int is_point_in_window(int x, int y, window_t * w) {
 
 
 /*
-* Getter for screen canvas
-*/
+ * Getter for screen canvas
+ */
 canvas_t * get_screen_canvas() {
     return &canvas;
 }
 
 /*
-* Canonical coordinates is the coordinates relative to the whole screen
-* Relative coordinates is the coordiantes relative to its parent
-* This function convert canonical coords to relative
-*/
+ * Canonical coordinates is the coordinates relative to the whole screen
+ * Relative coordinates is the coordiantes relative to its parent
+ * This function convert canonical coords to relative
+ */
 point_t get_relative_coordinates(window_t * w, int x, int y) {
     point_t p = get_canonical_coordinates(w);
     p.x = x - p.x;
@@ -513,8 +542,8 @@ point_t get_relative_coordinates(window_t * w, int x, int y) {
 }
 
 /*
-* This function convert relative coords to canonical one
-*/
+ * This function convert relative coords to canonical one
+ */
 point_t get_canonical_coordinates(window_t * w) {
     point_t p;
     p.x = w->x;
@@ -530,8 +559,8 @@ point_t get_canonical_coordinates(window_t * w) {
 }
 
 /*
-* Is two window overlap ?
-*/
+ * Is two window overlap ?
+ */
 int is_window_overlap(window_t * w1, window_t * w2) {
     point_t p1 = get_canonical_coordinates(w1);
     point_t p2 = get_canonical_coordinates(w1);
@@ -542,17 +571,45 @@ int is_window_overlap(window_t * w1, window_t * w2) {
 
 
 /*
-* Initialize compositor by getting info from vesa driver, creating screen cavans struct, and creating the super window and load desktop wallpaper
-*/
+ * In my GUI system, instead of writing window's pixels to the video memory directly, I'll first write them to a intermediate buffer, and then sending the buffer to video memory
+ * This avoids "refreshing the whole screen" every time window redraw.
+ */
+void video_memory_update(rect_t * rects, int len) {
+    if(rects == NULL) {
+        for(int i = 0; i < 1024 * 768; i++) {
+            screen[i] = intermediate_framebuffer[i];
+        }
+    }
+    else {
+        for(int i = 0; i < len; i++) {
+            rect_t rect = rects[i];
+            for(int j = rect.x;  j < rect.x + rect.width; j++) {
+                for(int k = rect.y; k < rect.y + rect.height; k++) {
+                    int idx = get_pixel_idx(&canvas, j, k);
+                    if(intermediate_framebuffer[idx] != 0x00000000) {
+                        screen[idx] = intermediate_framebuffer[idx];
+                    }
+                }
+            }
+        }
+    }
+}
+
+/*
+ * Initialize compositor by getting info from vesa driver, creating screen cavans struct, and creating the super window and load desktop wallpaper
+ */
 void compositor_init() {
+    intermediate_framebuffer = kmalloc(1024 * 768 * 4);
     // Get linear frame buffer from vesa driver
     screen = vesa_get_lfb();
     screen_width = vesa_get_resolution_x();
     screen_height = vesa_get_resolution_y();
-    canvas = canvas_create(1024, 768, screen);
+    canvas = canvas_create(1024, 768, intermediate_framebuffer);
 
+
+    // windows_list is only used when redrawing windows
+    windows_list = list_create();
     // Initialize window tree to manage the windows to be created
-
     // Create a base window, this should be the parent of all windows(super window)
     windows_tree = tree_create();
     window_t * w = window_create(NULL, 0, 0, screen_width, screen_height, WINDOW_SUPER, "desktop");

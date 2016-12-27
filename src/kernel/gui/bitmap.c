@@ -98,10 +98,9 @@ void bitmap_to_framebuffer2(bitmap_t * bmp, uint32_t * frame_buffer) {
             uint32_t b = image_row[j++] & 0xff;
             uint32_t g = image_row[j++] & 0xff;
             uint32_t r = image_row[j++] & 0xff;
-            j++;
-            uint32_t rgb = ((r << 16) | (g << 8) | (b)) & 0x00ffffff;
-            rgb = rgb | 0x00000000;
-            framebuffer_row[k] = rgb;
+            uint32_t a = image_row[j++] & 0xff;
+            uint32_t rgba = ((a << 24) | (r << 16) | (g << 8) | (b));
+            framebuffer_row[k] = rgba;
         }
     }
 }

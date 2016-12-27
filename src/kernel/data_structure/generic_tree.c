@@ -1,4 +1,5 @@
 #include <generic_tree.h>
+#include <list.h>
 
 /*
  * Create a tree with root = NULL
@@ -68,4 +69,36 @@ void tree_remove(gtree_t * tree, gtreenode_t * remove_node) {
     }
 }
 
+void tree2list_recur(gtreenode_t * subroot, list_t * list) {
+    if(subroot== NULL)
+        return;
+    foreach(child, subroot->children) {
+        gtreenode_t * curr_treenode = (gtreenode_t*)child->val;
+        void * curr_val = curr_treenode->value;
+        list_insert_back(list, curr_val);
+        tree2list_recur(child->val, list);
+    }
+}
+
+void tree2list(gtree_t * tree, list_t * list) {
+    tree2list_recur(tree->root, list);
+}
+
+
+
+void tree2array(gtree_t * tree, void ** array, int * size) {
+    tree2array_recur(tree->root, array, size);
+}
+
+void tree2array_recur(gtreenode_t * subroot, void ** array, int * size) {
+    if(subroot== NULL)
+        return;
+    void * curr_val = (void*)subroot->value;
+    array[*size] = curr_val;
+    *size = *size + 1;
+    foreach(child, subroot->children) {
+        gtreenode_t * curr_treenode = (gtreenode_t*)child->val;
+        tree2array_recur(child->val, array, size);
+    }
+}
 

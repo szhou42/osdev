@@ -32,7 +32,7 @@
 #include <system.h>
 
 #define KHEAP_START         (void*)0xC0400000
-#define KHEAP_INITIAL_SIZE  16 * M
+#define KHEAP_INITIAL_SIZE  32 * M
 #define KHEAP_MAX_ADDRESS   (void*)0xCFFFFFFF
 #define HEAP_MIN_SIZE       4 * M
 
