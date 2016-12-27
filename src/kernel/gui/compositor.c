@@ -51,20 +51,20 @@ void window_message_handler(winmsg_t * msg) {
                 int cursor_y = msg->cursor_y - p.y;
 
                 if(w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT){
-                    // If the point is within the rectangle of the close button, close the window
-                    rect_t r = rect_create(w->width - TITLE_BAR_HEIGHT, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
+                    // Close button
+                    rect_t r = rect_create(0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
                     if(w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT) {
                         if(is_point_in_rect(cursor_x, cursor_y, &r)) {
                             close_window(msg->window);
                         }
                     }
                     // Maximize button
-                    r.x = w->width - TITLE_BAR_HEIGHT * 2;
+                    r.x = TITLE_BAR_HEIGHT;
                     if(is_point_in_rect(cursor_x, cursor_y, &r)) {
                         maximize_window(msg->window);
                     }
                     // Minimize button
-                    r.x = w->width - TITLE_BAR_HEIGHT * 3;
+                    r.x = TITLE_BAR_HEIGHT * 2;
                     if(is_point_in_rect(cursor_x, cursor_y, &r)) {
                         minimize_window(msg->window);
                     }
@@ -408,6 +408,7 @@ void resize_window(window_t * w, int new_width, int new_height) {
 
     repaint(rect_create(w->x, w->y, oldw, oldh));
     repaint(rect_create(w->x, w->y, new_width, new_height));
+    display_all_window();
 }
 
 /*

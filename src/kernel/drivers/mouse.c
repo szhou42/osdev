@@ -18,12 +18,13 @@ rect_region_t current_mouse_region;
 
 // Mouse icon
 bitmap_t * cursor_icon;
+
+rect_t rects[2];
+
 /*
  * Mouse initialization, register irq and other stuff
  * */
 void mouse_init() {
-
-
     // Screen width and height
     screen_width = vesa_get_resolution_x();
     screen_height = vesa_get_resolution_y();
@@ -37,17 +38,18 @@ void mouse_init() {
     // Save initial mouse rect region
     next_mouse_region.r.x = mouse_x;
     next_mouse_region.r.y = mouse_y;
-    next_mouse_region.r.width = 32;
-    next_mouse_region.r.height = 32;
-    next_mouse_region.region = kmalloc(32 * 32 * 4);
-    memsetdw(next_mouse_region.region, 0x0000ff00, 32*32);
+    next_mouse_region.r.width = CURSOR_WIDTH;
+    next_mouse_region.r.height = CURSOR_HEIGHT;
+    next_mouse_region.region = kmalloc(CURSOR_WIDTH * CURSOR_HEIGHT * 4);
+    memsetdw(next_mouse_region.region, 0x0000ff00, CURSOR_WIDTH * CURSOR_HEIGHT);
     // Cursoe icon
     cursor_icon = bitmap_create("/cursor4.bmp");
     current_mouse_region.r = next_mouse_region.r;
-    //current_mouse_region.region = (uint32_t*)cursor_icon->image_bytes;
     bitmap_to_framebuffer2(cursor_icon, current_mouse_region.region);
     // Draw the mouse
+    rects[0] = next_mouse_region.r;
     draw_mouse();
+    video_memory_update(rects, 1);
 
     uint8_t _status;  //unsigned char
     //Enable the auxiliary mouse device
@@ -80,7 +82,9 @@ void mouse_handler(register_t * regs)
 {
     static uint8_t mouse_cycle = 0;
     static char mouse_byte[3];
-    rect_t rects[2];
+    // Cursor width and height can change, depending on its position(like when the half of the cursor is outside of screen)
+    int cursor_curr_width = CURSOR_WIDTH;
+    int cursor_curr_height = CURSOR_HEIGHT;
     switch(mouse_cycle)
     {
         winmsg_t msg;
@@ -136,10 +140,10 @@ void mouse_handler(register_t * regs)
                 mouse_x = 0;
             if(mouse_y < 0)
                 mouse_y = 0;
-            if(mouse_x > screen_width)
-                mouse_x = screen_width;
-            if(mouse_y > screen_height)
-                mouse_y = screen_height;
+            if(mouse_x > screen_width - 1)
+                mouse_x = screen_width - 1;
+            if(mouse_y > screen_height - 1)
+                mouse_y = screen_height - 1;
 
             // Repaint previous mouse region
             repaint(next_mouse_region.r);
@@ -147,11 +151,20 @@ void mouse_handler(register_t * regs)
             // Save current mouse rect region
             next_mouse_region.r.x = mouse_x;
             next_mouse_region.r.y = mouse_y;
-            next_mouse_region.r.width = 32;
-            next_mouse_region.r.height = 32;
+
+            if(mouse_x + CURSOR_WIDTH > screen_width - 1) {
+                cursor_curr_width = screen_width - mouse_x;
+            }
+
+            if(mouse_y + CURSOR_HEIGHT > screen_height - 1) {
+                cursor_curr_height = screen_height - mouse_y;
+            }
+
+            next_mouse_region.r.width = cursor_curr_width;
+            next_mouse_region.r.height = cursor_curr_height;
             current_mouse_region.r = next_mouse_region.r;
             //copy_rect(next_mouse_region.region, next_mouse_region.r);
-            memsetdw(next_mouse_region.region, 0x0000ff00, 32*32);
+            memsetdw(next_mouse_region.region, 0x0000ff00, CURSOR_WIDTH * CURSOR_HEIGHT);
 
             // Repaint current mouse region
             repaint(next_mouse_region.r);
@@ -183,5 +196,5 @@ uint8_t mouse_read()
 
 void draw_mouse() {
     set_fill_color(VESA_COLOR_BLUE);
-    draw_rect_pixels(get_screen_canvas(), &current_mouse_region);
+    draw_rect_clip_pixels(get_screen_canvas(), &current_mouse_region, CURSOR_WIDTH);
 }

@@ -8,6 +8,9 @@
 #define MOUSE_RIGHT_BUTTON(flag) (flag & 0x2)
 #define MOUSE_MIDDLE_BUTTON(flag) (flag & 0x4)
 
+#define CURSOR_WIDTH 32
+#define CURSOR_HEIGHT 32
+
 typedef struct cursor{
     int x;
     int y;

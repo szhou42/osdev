@@ -39,13 +39,24 @@ void draw_rect(canvas_t * canvas, int x, int y, int width, int height) {
 }
 
 void draw_rect_pixels(canvas_t * canvas, rect_region_t * rect_region) {
-    int k = 0;
-
     for(int i = rect_region->r.y;  i < rect_region->r.y + rect_region->r.height; i++) {
         for(int j = rect_region->r.x; j < rect_region->r.x + rect_region->r.width; j++) {
-            if(rect_region->region[k] != 0x0)
-                set_pixel(canvas, rect_region->region[k], j, i);
-            k++;
+            int idx = rect_region->r.width * (i - rect_region->r.y) + (j - rect_region->r.x);
+            if(rect_region->region[idx] != 0x0)
+                set_pixel(canvas, rect_region->region[idx], j, i);
+        }
+    }
+}
+
+/*
+ * Some times we only want to draw a clip of a rectangle(like when half of the window/cursor icon is outside of the screen)
+ * */
+void draw_rect_clip_pixels(canvas_t * canvas, rect_region_t * rect_region, int rect_true_width) {
+    for(int i = rect_region->r.y;  i < rect_region->r.y + rect_region->r.height; i++) {
+        for(int j = rect_region->r.x; j < rect_region->r.x + rect_region->r.width; j++) {
+            int idx = rect_true_width * (i - rect_region->r.y) + (j - rect_region->r.x);
+            if(rect_region->region[idx] != 0x0)
+                set_pixel(canvas, rect_region->region[idx], j, i);
         }
     }
 }
