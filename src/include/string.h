@@ -45,4 +45,6 @@ list_t * str_split(const char * str, const char * delim, unsigned int * numtoken
 
 char * list2str(list_t * list, const char * delim);
 
+void sprintf(char * buf, const char * fmt, ...);
+
 #endif

@@ -29,6 +29,7 @@
 #include <rtl8139.h>
 #include <ethernet.h>
 #include <ip.h>
+#include <serial.h>
 
 
 extern uint8_t * bitmap;
@@ -53,6 +54,7 @@ int kmain(multiboot_info_t * mb_info) {
     video_init();
     printf("%s\n", simpleos_logo);
 
+    qemu_printf("Test qemu log, %d\n", 10);
     // Initialize everything (green)
     set_curr_color(LIGHT_GREEN);
     printf("Initializing video(text mode 80 * 25)...\n");

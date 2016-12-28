@@ -1,5 +1,7 @@
 #include <string.h>
 #include <system.h>
+#include <stdarg.h>
+#include <printf.h>
 
 /*
  * Compare two buffer, return 1 if they're the same
@@ -285,5 +287,12 @@ char * list2str(list_t * list, const char * delim) {
         strcat(ret, temp);
     }
     return ret;
+}
+
+void sprintf(char * buf, const char * fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vsprintf(buf, NULL, fmt, ap);
+    va_end(ap);
 }
 

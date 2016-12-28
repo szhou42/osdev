@@ -12,13 +12,13 @@ int is_format_letter(char c) {
  * The only difference of printf and sprintf is, one writes to screen memory, and another writes to normal memory buffer
  * vsprintf should keeps track of current mem pointer to place next character(for printf, print_char alread keeps track of current screen posistion, so this is only true for sprintf)
  * */
-void vsprintf(char * str, const char * format, va_list arg) {
+void vsprintf(char * str, void (*putchar)(char), const char * format, va_list arg) {
     uint32_t pos = 0;
-    vsprintf_helper(str, format, &pos, arg);
+    vsprintf_helper(str, putchar, format, &pos, arg);
 }
 
 
-void vsprintf_helper(char * str, const char * format, uint32_t * pos, va_list arg) {
+void vsprintf_helper(char * str, void (*putchar)(char), const char * format, uint32_t * pos, va_list arg) {
     char c;
     int sign, ival, sys;
     char buf[512];
@@ -82,14 +82,18 @@ void vsprintf_helper(char * str, const char * format, uint32_t * pos, va_list ar
                             *pos = *pos + 1;
                         }
                         else
-                            print_char('-');
+                            (*putchar)('-');
                     }
                     if(str) {
                         strcpy(str + *pos, buf);
                         *pos = *pos + strlen(buf);
                     }
                     else {
-                        print_string(buf);
+                        char * t = buf;
+                        while(*t) {
+                            putchar(*t);
+                            t++;
+                        }
                     }
                     break;
                 case 'c':
@@ -98,7 +102,7 @@ void vsprintf_helper(char * str, const char * format, uint32_t * pos, va_list ar
                         *pos = *pos + 1;
                     }
                     else {
-                        print_char((char)va_arg(arg, int));
+                        (*putchar)((char)va_arg(arg, int));
                     }
                     break;
                 case 's':
@@ -108,7 +112,11 @@ void vsprintf_helper(char * str, const char * format, uint32_t * pos, va_list ar
                         *pos = *pos + strlen(t);
                     }
                     else {
-                        print_string((char *) va_arg(arg, int));
+                        char * t = (char *) va_arg(arg, int);
+                        while(*t) {
+                            putchar(*t);
+                            t++;
+                        }
                     }
                     break;
                 default:
@@ -121,7 +129,7 @@ void vsprintf_helper(char * str, const char * format, uint32_t * pos, va_list ar
             *pos = *pos + 1;
         }
         else {
-            print_char(c);
+            (*putchar)(c);
         }
 
     }
@@ -136,15 +144,16 @@ void vsprintf_helper(char * str, const char * format, uint32_t * pos, va_list ar
 void printf(const char * s, ...) {
     va_list ap;
     va_start(ap, s);
-    vsprintf(NULL, s, ap);
+    vsprintf(NULL, print_char, s, ap);
     va_end(ap);
 }
 
+/*
+This has been moved to string.c
 void sprintf(char * buf, const char * fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    vsprintf(buf, fmt, ap);
+    vsprintf(buf, NULL, fmt, ap);
     va_end(ap);
 }
-
-
+*/
