@@ -3,6 +3,8 @@
 #include <stdarg.h>
 #include <printf.h>
 
+#define FAST_MEMCPY 0
+void fast_memcpy(char * dst, char * src, uint32_t n);
 /*
  * Compare two buffer, return 1 if they're the same
  * */
@@ -18,7 +20,10 @@ int memcmp(uint8_t * data1, uint8_t * data2, int n) {
 
 void *memcpy(void *dst, void const *src, int n)
 {
-#if 1
+#if FAST_MEMCPY
+    fast_memcpy(dst, src, n);
+    return dst;
+#else
     char * ret = dst;
     char * p = dst;
     const char * q = src;
@@ -26,6 +31,7 @@ void *memcpy(void *dst, void const *src, int n)
         *p++ = *q++;
     return ret;
 #endif
+
 }
 void *memset(void *dst,char val, int n)
 {

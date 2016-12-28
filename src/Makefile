@@ -17,7 +17,9 @@ SOURCES=$(ROOT_DIR)/kmain.c $(COMMON_DIR)/system.c $(COMMON_DIR)/string.c $(COMM
 
 
 ASM_SOURCES=$(ROOT_DIR)/entry.asm $(DT_DIR)/idt_helper.asm $(DT_DIR)/gdt_helper.asm $(INTERRUPT_DIR)/exception_helper.asm \
-	$(INTERRUPT_DIR)/interrupt_helper.asm $(SCHEDULER_DIR)/usermode_helper.asm $(DT_DIR)/tss_helper.asm $(SCHEDULER_DIR)/context_switch.asm $(COMMON_DIR)/bios32_helper.asm
+	$(INTERRUPT_DIR)/interrupt_helper.asm $(SCHEDULER_DIR)/usermode_helper.asm $(DT_DIR)/tss_helper.asm $(SCHEDULER_DIR)/context_switch.asm $(COMMON_DIR)/bios32_helper.asm $(COMMON_DIR)/fast_memcpy.asm \
+	$(COMMON_DIR)/sse.asm
+
 
 # Setup object files
 OBJECTS=$(SOURCES:.c=.o) $(ASM_SOURCES:.asm=.o)

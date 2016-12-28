@@ -49,10 +49,18 @@ void test_bios32() {
     print_reg16(&reg2);
 }
 
+uint32_t sse_available();
+void sse_init();
+
 int kmain(multiboot_info_t * mb_info) {
 
     video_init();
     printf("%s\n", simpleos_logo);
+
+    uint32_t ret = sse_available();
+    qemu_printf("Is sse available? (%d)\n", ret);
+    if(ret)
+        sse_init();
 
     // Initialize everything (green)
     set_curr_color(LIGHT_GREEN);
