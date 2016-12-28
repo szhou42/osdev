@@ -7,6 +7,7 @@
 #include <printf.h>
 #include <generic_tree.h>
 #include <font.h>
+#include <serial.h>
 
 
 /*
@@ -34,6 +35,9 @@ uint32_t title_bar_colors[18] = {0x00EDEDED, 0x00EBEBEB, 0x00E9E9E9, 0x00E7E7E7,
 
 rect_t rects[2];
 
+int left_button_held_down;
+int right_button_held_down;
+
 /*
  * The window needs to receive user inputs like mouse movement, keyboard keypress, and others.
  * */
@@ -47,21 +51,28 @@ void window_message_handler(winmsg_t * msg) {
     rect_t r = rect_create(0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
     switch(msg->msg_type) {
         case WINMSG_MOUSE:
-            if(msg->sub_type == WINMSG_MOUSE_RIGHT_BUTTONUP) {
-                // Do somethig when mouse right click
-                //display_all_window();
-            }
-            if(msg->sub_type == WINMSG_MOUSE_LEFT_BUTTON_HELDDOWN) {
-                // If cursor is at the title bar, move window
-                // Title bar
-                r.x = TITLE_BAR_HEIGHT * 2;
-                r.width = w->width - r.x;
-                if(is_point_in_rect(cursor_x, cursor_y, &r)) {
-                    move_window(w, w->x + msg->change_x, w->y + msg->change_y);
+            if(msg->sub_type == WINMSG_MOUSE_MOVE) {
+                if(left_button_held_down) {
+                    // Title bar
+                    r.x = TITLE_BAR_HEIGHT * 2;
+                    r.width = w->width - r.x;
+                    if(is_point_in_rect(cursor_x, cursor_y, &r)) {
+                        move_window(w, w->x + msg->change_x, w->y + msg->change_y);
+                    }
                 }
-
             }
+
+            if(msg->sub_type == WINMSG_MOUSE_RIGHT_BUTTONUP) {
+                right_button_held_down = 0;
+            }
+
+            if(msg->sub_type == WINMSG_MOUSE_RIGHT_BUTTONDOWN) {
+                right_button_held_down = 1;
+                qemu_printf("right button held down\n");
+            }
+
             if(msg->sub_type == WINMSG_MOUSE_LEFT_BUTTONUP) {
+                left_button_held_down = 0;
                 if((w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT) && strcmp(w->name, "desktop_bar") != 0){
                     // Close button
                     if(w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT) {
@@ -86,6 +97,11 @@ void window_message_handler(winmsg_t * msg) {
                         close_window(w->parent);
                     }
                 }
+            }
+
+            if(msg->sub_type == WINMSG_MOUSE_LEFT_BUTTONDOWN) {
+                left_button_held_down = 1;
+                qemu_printf("left button held down\n");
             }
 
             break;
@@ -299,7 +315,6 @@ void display_all_window() {
     for(int i = 0; i < size; i++) {
         window_display(windows_array[i]);
     }
-
 }
 
 /*

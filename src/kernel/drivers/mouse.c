@@ -4,6 +4,7 @@
 #include <compositor.h>
 #include <draw.h>
 #include <bitmap.h>
+#include <serial.h>
 
 int mouse_x;
 int mouse_y;
@@ -26,7 +27,10 @@ rect_t rects[2];
 uint8_t prev_button_state[3];
 uint8_t curr_button_state[3];
 
-
+void print_button_state() {
+    qemu_printf("prev state: %d %d %d\n", prev_button_state[0], prev_button_state[1], prev_button_state[2]);
+    qemu_printf("curr state: %d %d %d\n", curr_button_state[0], curr_button_state[1], curr_button_state[2]);
+}
 int left_button_down() {
     return !prev_button_state[0] && curr_button_state[0];
 }
@@ -43,14 +47,6 @@ int right_button_up() {
     return prev_button_state[2] && !curr_button_state[2];
 }
 
-int left_button_held_down() {
-    return prev_button_state[0] && curr_button_state[0];
-}
-
-int right_button_held_down() {
-    return prev_button_state[2] && curr_button_state[2];
-}
-
 /*
  * Every time mouse event fires, mouse_handler will be called
  * The argument regs is not used in here
@@ -63,11 +59,6 @@ void mouse_handler(register_t * regs)
     // Cursor width and height can change, depending on its position(like when the half of the cursor is outside of screen)
     int cursor_curr_width = CURSOR_WIDTH;
     int cursor_curr_height = CURSOR_HEIGHT;
-
-
-    // Update prev state
-    if(mouse_cycle == 0)
-        memcpy(prev_button_state, curr_button_state, 3);
 
     // Fill message
     msg.msg_type = WINMSG_MOUSE;
@@ -99,6 +90,9 @@ void mouse_handler(register_t * regs)
             break;
         case 2:
             mouse_byte[2]= mouse_read();
+            // Position is not changed
+            //if(mouse_byte[1] == 0 && mouse_byte[2] == 0)
+            //    break;
 
             // Update mouse position
             mouse_x = mouse_x + mouse_byte[1];
@@ -147,30 +141,39 @@ void mouse_handler(register_t * regs)
             video_memory_update(rects, 2);
             // May be send a mouse move message to windows in here, if needed.
 
+            msg.sub_type = WINMSG_MOUSE_MOVE;
+            msg.change_x = mouse_byte[1];
+            msg.change_y = -mouse_byte[2];
             mouse_cycle = 0;
             break;
     }
     if(mouse_cycle == 0) {
         if(left_button_down()) {
             msg.sub_type = WINMSG_MOUSE_LEFT_BUTTONDOWN;
-        }
-        if(left_button_held_down()) {
-            msg.sub_type = WINMSG_MOUSE_LEFT_BUTTON_HELDDOWN;
+            qemu_printf("left button down\n");
+            print_button_state();
         }
         if(left_button_up()) {
             msg.sub_type = WINMSG_MOUSE_LEFT_BUTTONUP;
+            qemu_printf("left button up\n");
+            print_button_state();
         }
         if(right_button_down()) {
             msg.sub_type = WINMSG_MOUSE_RIGHT_BUTTONDOWN;
-        }
-        if(right_button_held_down()) {
-            msg.sub_type = WINMSG_MOUSE_RIGHT_BUTTON_HELDDOWN;
+            qemu_printf("right button down\n");
+            print_button_state();
         }
         if(right_button_up()) {
             msg.sub_type = WINMSG_MOUSE_RIGHT_BUTTONUP;
+            qemu_printf("right button up\n");
+            print_button_state();
         }
         msg.window = query_window_by_point(mouse_x, mouse_y);
         window_message_handler(&msg);
+        // Previous state becomes current state
+        memcpy(prev_button_state, curr_button_state, 3);
+        // Current state becomes empty
+        memset(curr_button_state, 0x00, 3);
     }
 }
 
