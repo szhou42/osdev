@@ -62,6 +62,15 @@ int kmain(multiboot_info_t * mb_info) {
     if(ret)
         sse_init();
 
+    char array1[1024];
+    char array2[1024];
+    array1[320] = 'h';
+    array1[321] = 'e';
+    array1[322] = 'l';
+    array1[323] = 'l';
+    array1[324] = 'o';
+    memcpy(array2, array1, 1024);
+
     // Initialize everything (green)
     set_curr_color(LIGHT_GREEN);
     printf("Initializing video(text mode 80 * 25)...\n");
