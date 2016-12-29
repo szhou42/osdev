@@ -37,11 +37,15 @@ void draw_rect_pixels(canvas_t * canvas, rect_region_t * rect_region);
 
 void draw_rect_clip_pixels(canvas_t * canvas, rect_region_t * rect_region, int rect_true_width);
 
+void draw_rect_clip_pixels2(canvas_t * canvas, rect_region_t * rect_region, int rect_true_width, int rect_true_x, int rect_true_y);
+
 void draw_line(canvas_t * canvas, int x1, int y1, int x2, int y2);
 
 int is_line_overlap(int line1_x1, int line1_x2, int line2_x1, int line2_x2);
 
 int is_rect_overlap(rect_t rect1, rect_t rect2);
+
+rect_t find_rect_overlap(rect_t rect1, rect_t rect2);
 
 rect_t rect_create(int x, int y, int width, int height);
 

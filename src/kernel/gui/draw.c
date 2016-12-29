@@ -61,6 +61,17 @@ void draw_rect_clip_pixels(canvas_t * canvas, rect_region_t * rect_region, int r
     }
 }
 
+void draw_rect_clip_pixels2(canvas_t * canvas, rect_region_t * rect_region, int rect_true_width, int rect_true_x, int rect_true_y) {
+    for(int i = rect_region->r.y;  i < rect_region->r.y + rect_region->r.height; i++) {
+        for(int j = rect_region->r.x; j < rect_region->r.x + rect_region->r.width; j++) {
+            int idx = rect_true_width * (i - rect_true_y) + (j - rect_true_x);
+            if(rect_region->region[idx] != 0x0)
+                set_pixel(canvas, rect_region->region[idx], j, i);
+        }
+    }
+}
+
+
 void draw_line(canvas_t * canvas, int x1, int y1, int x2, int y2)
 {
     int dx = x2-x1;
@@ -116,7 +127,36 @@ int is_line_overlap(int line1_x1, int line1_x2, int line2_x1, int line2_x2) {
 
 int is_rect_overlap(rect_t rect1, rect_t rect2) {
     // if both horizontal and vertical range of two rect overlaps, then they must overlap
-    return is_line_overlap(rect1.x, rect1.x + rect1.width - 1, rect2.x, rect2.x + rect2.width - 1) && is_line_overlap(rect1.y, rect1.y + rect1.height - 1, rect2.y, rect2.y + rect2.height - 1);
+    //return is_line_overlap(rect1.x, rect1.x + rect1.width - 1, rect2.x, rect2.x + rect2.width - 1) && is_line_overlap(rect1.y, rect1.y + rect1.height - 1, rect2.y, rect2.y + rect2.height - 1);
+    if((rect1.x > rect2.x + rect2.width) || (rect1.x + rect1.width < rect2.x))
+        return 0;
+    if((rect1.y > rect2.y + rect2.height) || (rect1.y + rect1.height < rect2.y))
+        return 0;
+    return 1;
+}
+
+rect_t find_rect_overlap(rect_t rect1, rect_t rect2) {
+    rect_t ret;
+    // If rect A has a bigger x-value on the right end, intersection's width = B's x-value on the right end - max(A's x-value on the left end, B's x-value on the left end)
+    // intersection's x would be max(A's x-value on the left end, B's x-value on the left end)
+
+    // If rect A has a bigger y-value on the bottom end, intersection's height = B's y-value on the bottom end - max(A's y-value on the top end, B's y-value on the top end)
+    // intersection's y would be max(A's y-value on the top end, B's y-value on the top end)
+    if(rect1.x + rect1.width > rect2.x + rect2.width) {
+        ret.width = rect2.x + rect2.width - max(rect1.x, rect2.x);
+    }
+    else {
+        ret.width = rect1.x + rect1.width - max(rect1.x, rect2.x);
+    }
+    ret.x = max(rect1.x, rect2.x);
+    if(rect1.y + rect1.height > rect2.y + rect2.height) {
+        ret.height = rect2.y + rect2.height - max(rect1.y, rect2.y);
+    }
+    else {
+        ret.height = rect1.y + rect1.height - max(rect1.y, rect2.y);
+    }
+    ret.y = max(rect1.y, rect2.y);
+    return ret;
 }
 
 rect_t rect_create(int x, int y, int width, int height) {

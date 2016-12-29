@@ -84,6 +84,9 @@ typedef struct window {
     list_t * above_windows;
 
     int depth;
+
+    // This rect maintains the rectangle portion of this window that may need to be redrawn next
+    rect_t intersection_rect;
 }window_t;
 
 /*
@@ -115,7 +118,7 @@ void compositor_init();
 
 window_t *  window_create(window_t * parent, int x, int y, int width, int height, int type, char * name);
 
-void window_display(window_t * w);
+void window_display(window_t * w, rect_t * rects, int size);
 
 void display_all_window();
 

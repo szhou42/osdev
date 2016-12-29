@@ -8,6 +8,7 @@
 #include <generic_tree.h>
 #include <font.h>
 #include <serial.h>
+#include <timer.h>
 
 
 /*
@@ -90,7 +91,7 @@ void window_message_handler(winmsg_t * msg) {
                     // Call button handler
                     if(strcmp("window_xp", w->name) == 0){
                         window_t * alertbox = alertbox_create(w->parent, 100, 100, "Alertbox", "A button is clicked!!!");
-                        window_display(alertbox);
+                        window_display(alertbox, NULL, 0);
                     }
                     else if(strcmp("alertbox_button", w->name) == 0){
                         // Get parent and close
@@ -270,7 +271,7 @@ void recur_add_under_windows(window_t * w, gtreenode_t * subroot) {
  * draw it in the window specified in the parameter
  * Now, i m just going to draw it in the screen frame buffer
  * */
-void window_display(window_t * w) {
+void window_display(window_t * w, rect_t * rects, int size) {
     if(w->is_minimized || w->parent->is_minimized) return;
     set_fill_color(w->border_color);
 
@@ -278,15 +279,23 @@ void window_display(window_t * w) {
     // If the frame buffer is not null, also draw the frame buffer
     if(w->frame_buffer) {
         rect_region_t rect_reg;
-        rect_reg.r.x = w->x;
-        rect_reg.r.y = w->y;
-        point_t p = get_canonical_coordinates(w);
-        rect_reg.r.x = p.x;
-        rect_reg.r.y = p.y;
-        rect_reg.r.width = w->width;
-        rect_reg.r.height = w->height;
         rect_reg.region = w->frame_buffer;
-        draw_rect_pixels(&canvas, &rect_reg);
+        point_t p = get_canonical_coordinates(w);
+        if(rects) {
+            // Draw part(s) of the window
+            for(int i = 0; i < size; i++) {
+                rect_reg.r = rects[i];
+                draw_rect_clip_pixels2(&canvas, &rect_reg, w->width, p.x, p.y);
+            }
+        }
+        else {
+            rect_reg.r.x = p.x;
+            rect_reg.r.y = p.y;
+            rect_reg.r.width = w->width;
+            rect_reg.r.height = w->height;
+            // Draw entire window
+            draw_rect_pixels(&canvas, &rect_reg);
+        }
         //repaint(rect_reg.r);
         //display_recur(w->self);
     }
@@ -313,7 +322,7 @@ void display_all_window() {
     }
 
     for(int i = 0; i < size; i++) {
-        window_display(windows_array[i]);
+        window_display(windows_array[i], NULL, 0);
     }
 }
 
@@ -324,7 +333,7 @@ void display_recur(gtreenode_t * t) {
     foreach(child, t->children) {
         gtreenode_t * node = child->val;
         window_t * w = node->value;
-        window_display(w);
+        window_display(w, NULL, 0);
     }
 }
 
@@ -370,16 +379,53 @@ void move_window(window_t * w, int x, int y) {
  * Minimize window
  */
 void minimize_window(window_t * w) {
+    rect_t curr_rect;
     w->is_minimized = 1;
     point_t p = get_canonical_coordinates(w);
     int oldx = p.x;
     int oldy = p.y;
     int oldw = w->width;
     int oldh = w->height;
-    display_all_window();
-    rects[0] = rect_create(oldx, oldy, oldw, oldh);
-    //video_memory_update(rects, 1);
-    video_memory_update(NULL, 0);
+
+    // Step 1: Find all rectangles that are involved (just the rectangle of w, since this is a minimize operation)
+    rect_t w_rect = rect_create(oldx, oldy, oldw, oldh);
+    // Step2: Find all windows that intersect with the rectangle (for each window, determine the intersecting portion, which is also a rectangle)
+    int size = 0;
+    int new_size = 0;
+    tree2array(windows_tree, (void**)windows_array, &size);
+
+    for(int i = 0; i < size; i++) {
+        window_t * curr_w = windows_array[i];
+        if(curr_w->is_minimized) continue;
+        p = get_canonical_coordinates(curr_w);
+        curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
+        if(is_rect_overlap(w_rect, curr_rect)) {
+            curr_w->intersection_rect = find_rect_overlap(w_rect, curr_rect);
+            windows_array[new_size++] = curr_w;
+        }
+    }
+    // Step3: Sort all window. For each window, find the portions that are not covered by other more shallow windows
+    // Bubble sort window list, by depth
+    for(int i = 0; i < new_size - 1; i++) {
+        for(int j = 0; j < new_size - 1; j++) {
+            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
+                window_t * swap = windows_array[j];
+                windows_array[j] = windows_array[j + 1];
+                windows_array[j + 1] = swap;
+            }
+        }
+    }
+
+    for(int i = 0; i < new_size; i++) {
+        window_display(windows_array[i], &windows_array[i]->intersection_rect, 1);
+    }
+
+    // Step4, draw each of the window(only the part that's not covered), from the deepest one to the shalloest one
+
+    //display_all_window();
+    rects[0] = w_rect;
+    video_memory_update(rects, 1);
+    //video_memory_update(NULL, 0);
 }
 
 
@@ -387,6 +433,7 @@ void minimize_window(window_t * w) {
  * Different from minimize_window, close_window actually removes the window from the window tree,
  */
 void close_window(window_t * w) {
+    rect_t curr_rect;
     point_t p = get_canonical_coordinates(w);
     int oldx = p.x;
     int oldy = p.y;
@@ -394,10 +441,43 @@ void close_window(window_t * w) {
     int oldh = w->height;
     // Remove the window from tree
     tree_remove(windows_tree, w->self);
-    display_all_window();
-    rects[0] = rect_create(oldx, oldy, oldw, oldh);
-    //video_memory_update(rects, 1);
-    video_memory_update(NULL, 0);
+
+    // Step 1: Find all rectangles that are involved (just the rectangle of w, since this is a minimize operation)
+    rect_t w_rect = rect_create(oldx, oldy, oldw, oldh);
+    // Step2: Find all windows that intersect with the rectangle (for each window, determine the intersecting portion, which is also a rectangle)
+    int size = 0;
+    int new_size = 0;
+    tree2array(windows_tree, (void**)windows_array, &size);
+
+    for(int i = 0; i < size; i++) {
+        window_t * curr_w = windows_array[i];
+        if(curr_w->is_minimized) continue;
+        p = get_canonical_coordinates(curr_w);
+        curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
+        if(is_rect_overlap(w_rect, curr_rect)) {
+            curr_w->intersection_rect = find_rect_overlap(w_rect, curr_rect);
+            windows_array[new_size++] = curr_w;
+        }
+    }
+    // Step3: Sort all window. For each window, find the portions that are not covered by other more shallow windows
+    // Bubble sort window list, by depth
+    for(int i = 0; i < new_size - 1; i++) {
+        for(int j = 0; j < new_size - 1; j++) {
+            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
+                window_t * swap = windows_array[j];
+                windows_array[j] = windows_array[j + 1];
+                windows_array[j + 1] = swap;
+            }
+        }
+    }
+
+    for(int i = 0; i < new_size; i++) {
+        window_display(windows_array[i], &windows_array[i]->intersection_rect, 1);
+    }
+
+    // Step4, draw each of the window(only the part that's not covered), from the deepest one to the shalloest one
+    rects[0] = w_rect;
+    video_memory_update(rects, 1);
 }
 
 /*
