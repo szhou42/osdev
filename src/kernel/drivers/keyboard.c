@@ -1,4 +1,5 @@
 #include <keyboard.h>
+#include <compositor.h>
 #include <system.h>
 #include <printf.h>
 #include <isr.h>
@@ -44,7 +45,9 @@ char kbdus[128] = {
 
 void keyboard_handler(register_t * r)
 {
+    winmsg_t msg;
     int i, scancode;
+    msg.msg_type = WINMSG_KEYBOARD;
     //get scancode with "timeout"
     for(i = 1000; i > 0; i++) {
         // Check if scan code is ready
@@ -59,7 +62,11 @@ void keyboard_handler(register_t * r)
         }
         else {
             // Key down
-            printf("%c", kbdus[scancode]);
+            qemu_printf("Key pressed %c\n", kbdus[scancode]);
+            // Send message to the focus window
+            msg.key_pressed = kbdus[scancode];
+            msg.window = get_focus_window();
+            window_message_handler(&msg);
         }
     }
 }

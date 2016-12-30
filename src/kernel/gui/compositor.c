@@ -42,7 +42,15 @@ rect_t rects[2];
 int left_button_held_down;
 int right_button_held_down;
 
+int moving = 0;
+
+#define DEBUG_GUI 0
+
+int is_moving() {
+    return moving;
+}
 void print_windows_depth() {
+#if DEBUG_GUI
     int size = 0;
     tree2array(windows_tree, (void**)windows_array, &size);
 
@@ -61,14 +69,19 @@ void print_windows_depth() {
             qemu_printf("%s ", w->name);
         }
         qemu_printf("]\n\n");
-
     }
+#endif
+}
+
+window_t * get_focus_window() {
+    return focus_w;
 }
 
 /*
  * The window needs to receive user inputs like mouse movement, keyboard keypress, and others.
  * */
 void window_message_handler(winmsg_t * msg) {
+    char key_pressed;
     window_t * w = msg->window;
     // Translate the cursor_x and cursor_y to base on the window's coord, not the screen's coord
     point_t p = get_canonical_coordinates(w);
@@ -135,7 +148,43 @@ void window_message_handler(winmsg_t * msg) {
 
             break;
         case WINMSG_KEYBOARD:
+            key_pressed = msg->key_pressed;
+            qemu_printf("%s receives a key press [%c]\n", w->name, key_pressed);
+            switch(key_pressed) {
+                case 'u':
+                    move_window(w, p.x - 10, p.y - 10);
+                    break;
 
+                case 'i':
+                    move_window(w, p.x + 10, p.y - 10);
+                    break;
+
+                case 'j':
+                    move_window(w, p.x - 10, p.y + 10);
+                    break;
+
+                case 'k':
+                    move_window(w, p.x + 10, p.y + 10);
+                    break;
+
+                case 'w':
+                    move_window(w, p.x, p.y - 10);
+                    break;
+
+                case 's':
+                    move_window(w, p.x, p.y + 10);
+                    break;
+
+                case 'a':
+                    move_window(w, p.x - 10, p.y);
+                    break;
+
+                case 'd':
+                    move_window(w, p.x + 10, p.y);
+                    break;
+                default:
+                    break;
+            }
             break;
         default:
             break;
@@ -373,7 +422,7 @@ void window_display(window_t * w, rect_t * rects, int size) {
             draw_rect_pixels(&canvas, &rect_reg);
         }
         //repaint(rect_reg.r);
-        //display_recur(w->self);
+        display_recur(w->self);
     }
 }
 
@@ -409,7 +458,9 @@ void display_recur(gtreenode_t * t) {
     foreach(child, t->children) {
         gtreenode_t * node = child->val;
         window_t * w = node->value;
-        window_display(w, NULL, 0);
+        // Only draw buttons and textbox using display_recur
+        if(w->type == WINDOW_CONTROL)
+            window_display(w, NULL, 0);
     }
 }
 
@@ -437,6 +488,17 @@ void set_window_fillcolor(window_t * w, uint32_t color) {
  * Move window to a start at (x,y)
  */
 void move_window(window_t * w, int x, int y) {
+    moving = 1;
+    // Do some input check here, make sure the window can not be move outside of the screen
+    if(x < 0)
+        x = 0;
+    if(y < 0)
+        y = 0;
+    if(x + w->width >= canvas.width)
+        x = canvas.width - w->width;
+    if(y + w->height >= canvas.height)
+        y = canvas.height - w->height;
+
     qemu_printf("Move window from [%d, %d] to [%d, %d], w = %d, h = %d\n", w->x, w->y, x, y, w->width, w->height);
     rect_t curr_rect;
     int oldx = w->x;
@@ -468,12 +530,12 @@ void move_window(window_t * w, int x, int y) {
     }
 
     if(y > oldy) {// OK
-        rect1.y = oldy;
-        rect2.y = y + oldh;
-    }
-    else {// OK
         rect1.y = y;
         rect2.y = oldy;
+    }
+    else {// OK
+        rect1.y = oldy;
+        rect2.y = y + oldh;
     }
     if(rect1.width != 0 && rect1.height != 0) {
         rects[rect_size++] = rect1;
@@ -488,10 +550,11 @@ void move_window(window_t * w, int x, int y) {
     int size = 0;
     int new_size = 0;
     for(int i = 0; i < rect_size; i++) {
+        size = 0;
         tree2array(windows_tree, (void**)windows_array, &size);
         for(int i = 0; i < size; i++) {
             window_t * curr_w = windows_array[i];
-            if(curr_w->is_minimized) continue;
+            if(curr_w->is_minimized || curr_w == w) continue;
             p = get_canonical_coordinates(curr_w);
             curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
             if(is_rect_overlap(rects[i], curr_rect)) {
@@ -521,8 +584,15 @@ void move_window(window_t * w, int x, int y) {
 
     curr_rect = rect_create(x, y, w->width, w->height);
     rects[rect_size++] = curr_rect;
+
+    qemu_printf("------\n");
+    for(int i = 0; i < rect_size; i++) {
+        qemu_printf("rects[%d]: [%d,%d,%d,%d]", i, rects[i].x, rects[i].y, rects[i].width, rects[i].height);
+    }
+    qemu_printf("------\n");
     video_memory_update(rects, rect_size);
     qemu_printf("Move finish\n");
+    moving = 0;
 }
 
 

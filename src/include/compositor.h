@@ -108,9 +108,16 @@ typedef struct winmsg {
     int change_x;
     int change_y;
 
+    // Keyboard key
+    char key_pressed;
+
     // Involved window
     window_t * window;
 }winmsg_t;
+
+int is_moving();
+
+window_t * get_focus_window();
 
 void print_windows_depth();
 

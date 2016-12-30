@@ -89,6 +89,11 @@ void mouse_handler(register_t * regs)
             mouse_cycle++;
             break;
         case 2:
+            if(is_moving()) {
+                // Dirty hack... prevent mouse from moving too fast
+                mouse_cycle = 0;
+                return;
+            }
             mouse_byte[2]= mouse_read();
             // Position is not changed
             //if(mouse_byte[1] == 0 && mouse_byte[2] == 0)
