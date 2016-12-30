@@ -9,6 +9,7 @@
 #include <font.h>
 #include <serial.h>
 #include <timer.h>
+#include <math.h>
 
 
 /*
@@ -25,6 +26,8 @@ canvas_t canvas;
 // Keep a reference to desktop bar
 window_t * desktop_bar;
 
+window_t * focus_w;
+
 // Intermediate frame buffer
 uint32_t * intermediate_framebuffer;
 
@@ -38,6 +41,29 @@ rect_t rects[2];
 
 int left_button_held_down;
 int right_button_held_down;
+
+void print_windows_depth() {
+    int size = 0;
+    tree2array(windows_tree, (void**)windows_array, &size);
+
+    for(int i = 0; i < size; i++) {
+        window_t * curr_w = windows_array[i];
+        qemu_printf("* %s, depth: %d\n", curr_w->name, curr_w->depth);
+        qemu_printf("under_windows: [");
+        foreach(t, curr_w->under_windows) {
+            window_t * w = t->val;
+            qemu_printf("%s ", w->name);
+        }
+        qemu_printf("]\n");
+        qemu_printf("above_windows: [");
+        foreach(t, curr_w->above_windows) {
+            window_t * w = t->val;
+            qemu_printf("%s ", w->name);
+        }
+        qemu_printf("]\n\n");
+
+    }
+}
 
 /*
  * The window needs to receive user inputs like mouse movement, keyboard keypress, and others.
@@ -102,6 +128,8 @@ void window_message_handler(winmsg_t * msg) {
 
             if(msg->sub_type == WINMSG_MOUSE_LEFT_BUTTONDOWN) {
                 left_button_held_down = 1;
+                // Set window focus
+                window_set_focus(w);
                 qemu_printf("left button held down\n");
             }
 
@@ -196,9 +224,57 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
 
     if(strcmp(w->name, "desktop_bar") == 0)
         desktop_bar = w;
+    focus_w = w;
     return w;
 }
 
+void window_set_focus(window_t * w) {
+
+    // Bring window to the front
+    // Destroy the under and above list and re-calculate them
+    if(w->type != WINDOW_SUPER) {
+        qemu_printf("Set focus start\n");
+        print_windows_depth();
+        int idx = 0;
+        point_t p = get_canonical_coordinates(w);
+        // Step 1: Find all rectangles that are involved (just the rectangle of w, since this is a minimize operation)
+        rect_t w_rect = rect_create(p.x, p.y, w->width, w->height);
+        // For all windows involved, recalculate the list: under_windows, above_windows
+        int size = 0;
+        tree2array(windows_tree, (void**)windows_array, &size);
+
+        for(int i = 0; i < size; i++) {
+            window_t * curr_w = windows_array[i];
+            if(curr_w->is_minimized || curr_w == w) continue;
+            p = get_canonical_coordinates(curr_w);
+            rect_t curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
+            if(is_rect_overlap(w_rect, curr_rect)) {
+                // Remove w from curr_w's under_windows
+                if((idx = list_contain(curr_w->under_windows, w)) != -1)
+                    list_remove_by_index(curr_w->under_windows, idx);
+                // Add w to curr w's above_windows
+                if(list_contain(curr_w->above_windows, w) == -1) {
+                    list_insert_back(curr_w->above_windows, w);
+                    curr_w->depth = list_size(curr_w->above_windows);
+                }
+            }
+        }
+
+        list_destroy(w->above_windows);
+        w->above_windows = list_create();
+        add_under_windows(w);
+        w->depth = list_size(w->above_windows);
+
+        // Redraw
+        p = get_canonical_coordinates(w);
+        rect_t r = rect_create(p.x, p.y, w->width, w->height);
+        window_display(w, NULL, 0);
+        video_memory_update(&r, 1);
+    }
+    focus_w = w;
+    qemu_printf("Set focus finish\n");
+    print_windows_depth();
+}
 /*
  * Below is a set of functions that add components to a window by either 1) drawing on the frame buffer of the window, or adding child window(which has its own frame buffer and relative coord)
  * */
@@ -253,10 +329,10 @@ void recur_add_under_windows(window_t * w, gtreenode_t * subroot) {
 
     if(is_window_overlap(w, curr_w)) {
         // Only add to the list if they are not already there
-        if(!list_contain(w->under_windows, curr_w)) {
+        if(list_contain(w->under_windows, curr_w) == -1) {
             list_insert_back(w->under_windows, curr_w);
         }
-        if(!list_contain(w->above_windows, curr_w)) {
+        if(list_contain(curr_w->above_windows, w) == -1) {
             list_insert_back(curr_w->above_windows, w);
             curr_w->depth = list_size(curr_w->above_windows);
         }
@@ -361,17 +437,92 @@ void set_window_fillcolor(window_t * w, uint32_t color) {
  * Move window to a start at (x,y)
  */
 void move_window(window_t * w, int x, int y) {
+    qemu_printf("Move window from [%d, %d] to [%d, %d], w = %d, h = %d\n", w->x, w->y, x, y, w->width, w->height);
+    rect_t curr_rect;
     int oldx = w->x;
     int oldy = w->y;
     int oldw = w->width;
     int oldh = w->height;
+    int rect_size = 0;
     w->x = x;
     w->y = y;
+    point_t p;
 
-    display_all_window();
-    rects[0] = rect_create(oldx, oldy, oldw, oldh);
-    rects[1] = rect_create(x, y, oldw, oldh);
-    video_memory_update(rects, 2);
+    rect_t rect1, rect2;
+
+    // Step1: Find the two rectangles that need to be redrawn with something else
+    // Calculate width and height of both rectangles
+    rect1.width = abs(x - oldx);
+    rect2.height = abs(y - oldy);
+    rect1.height = oldh - rect2.height;
+    rect2.width = oldw;
+    // Calculate (x,y) of both rectangles
+    if(x > oldx) {// OK
+        rect1.x = oldx;
+        rect2.x = oldx;
+    }
+    else {// OK
+        // For x <= oldx
+        rect1.x = x + oldw;
+        rect2.x = oldx;
+    }
+
+    if(y > oldy) {// OK
+        rect1.y = oldy;
+        rect2.y = y + oldh;
+    }
+    else {// OK
+        rect1.y = y;
+        rect2.y = oldy;
+    }
+    if(rect1.width != 0 && rect1.height != 0) {
+        rects[rect_size++] = rect1;
+        qemu_printf("%dth rect: [x: %d y: %d w: %d h: %d]\n", rect_size, rect1.x, rect1.y, rect1.width, rect1.height);
+    }
+    if(rect2.width != 0 && rect2.height != 0) {
+        rects[rect_size++] = rect2;
+        qemu_printf("%dth rect: [x: %d y: %d w: %d h: %d]\n", rect_size, rect2.x, rect2.y, rect2.width, rect2.height);
+    }
+
+    // Step2: What are the windows and their intersections related to each rectangle
+    int size = 0;
+    int new_size = 0;
+    for(int i = 0; i < rect_size; i++) {
+        tree2array(windows_tree, (void**)windows_array, &size);
+        for(int i = 0; i < size; i++) {
+            window_t * curr_w = windows_array[i];
+            if(curr_w->is_minimized) continue;
+            p = get_canonical_coordinates(curr_w);
+            curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
+            if(is_rect_overlap(rects[i], curr_rect)) {
+                curr_w->intersection_rect = find_rect_overlap(rects[i], curr_rect);
+                windows_array[new_size++] = curr_w;
+            }
+        }
+        // Step3: Sort windows by depth and draw window intersection
+        // Bubble sort window list, by depth
+        for(int i = 0; i < new_size - 1; i++) {
+            for(int j = 0; j < new_size - 1; j++) {
+                if(windows_array[j]->depth < windows_array[j + 1]->depth) {
+                    window_t * swap = windows_array[j];
+                    windows_array[j] = windows_array[j + 1];
+                    windows_array[j + 1] = swap;
+                }
+            }
+        }
+
+        for(int i = 0; i < new_size; i++) {
+            if(windows_array[i] == w) continue;
+            window_display(windows_array[i], &windows_array[i]->intersection_rect, 1);
+        }
+    }
+    // Step4: Draw window w on new position
+    window_display(w, NULL, 0);
+
+    curr_rect = rect_create(x, y, w->width, w->height);
+    rects[rect_size++] = curr_rect;
+    video_memory_update(rects, rect_size);
+    qemu_printf("Move finish\n");
 }
 
 
@@ -405,6 +556,9 @@ void minimize_window(window_t * w) {
         }
     }
     // Step3: Sort all window. For each window, find the portions that are not covered by other more shallow windows
+    // Second part of step3 can greatly reduce latency for situation where multiple windows overlap each other, i may implement it later if necessary
+    // But minimize window now looks pretty smooth already.
+
     // Bubble sort window list, by depth
     for(int i = 0; i < new_size - 1; i++) {
         for(int j = 0; j < new_size - 1; j++) {
@@ -421,7 +575,6 @@ void minimize_window(window_t * w) {
     }
 
     // Step4, draw each of the window(only the part that's not covered), from the deepest one to the shalloest one
-
     //display_all_window();
     rects[0] = w_rect;
     video_memory_update(rects, 1);
@@ -484,14 +637,7 @@ void close_window(window_t * w) {
  * Resize window, this function doesn't work now after I start to give frame buffer to every window, don't use it for now
  */
 void resize_window(window_t * w, int new_width, int new_height) {
-    int oldw = w->width;
-    int oldh = w->height;
-    w->width = new_width;
-    w->height = new_height;
 
-    repaint(rect_create(w->x, w->y, oldw, oldh));
-    repaint(rect_create(w->x, w->y, new_width, new_height));
-    display_all_window();
 }
 
 /*
@@ -549,13 +695,43 @@ void paint_pixel(canvas_t * canvas, int x, int y) {
  * Given a rectangle region, repaint the pixel it should have
  * */
 void repaint(rect_t r) {
-    // This method is always called to repaint the whole screen, so canvas's frame buffer is always the screen
-    canvas_t canvas = canvas_create(1024, 768, intermediate_framebuffer);
-    for(int i = r.x; i < r.x + r.width; i++) {
-        for(int j = r.y; j < r.y + r.height; j++) {
-            paint_pixel(&canvas, i, j);
+    rect_t curr_rect;
+    point_t p;
+    int size = 0;
+    int new_size = 0;
+    tree2array(windows_tree, (void**)windows_array, &size);
+
+    for(int i = 0; i < size; i++) {
+        window_t * curr_w = windows_array[i];
+        if(curr_w->is_minimized) continue;
+        p = get_canonical_coordinates(curr_w);
+        curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
+        if(is_rect_overlap(r, curr_rect)) {
+            curr_w->intersection_rect = find_rect_overlap(r, curr_rect);
+            windows_array[new_size++] = curr_w;
         }
     }
+    // Step3: Sort all window. For each window, find the portions that are not covered by other more shallow windows
+    // Bubble sort window list, by depth
+    for(int i = 0; i < new_size - 1; i++) {
+        for(int j = 0; j < new_size - 1; j++) {
+            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
+                window_t * swap = windows_array[j];
+                windows_array[j] = windows_array[j + 1];
+                windows_array[j + 1] = swap;
+            }
+        }
+    }
+
+    for(int i = 0; i < new_size; i++) {
+        window_display(windows_array[i], &windows_array[i]->intersection_rect, 1);
+    }
+
+    // Step4, draw each of the window(only the part that's not covered), from the deepest one to the shalloest one
+    //display_all_window();
+    rects[0] = r;
+    video_memory_update(rects, 1);
+
 }
 
 /*
@@ -649,7 +825,7 @@ point_t get_canonical_coordinates(window_t * w) {
  */
 int is_window_overlap(window_t * w1, window_t * w2) {
     point_t p1 = get_canonical_coordinates(w1);
-    point_t p2 = get_canonical_coordinates(w1);
+    point_t p2 = get_canonical_coordinates(w2);
     rect_t r1 = rect_create(p1.x, p1.y, w1->width, w1->height);
     rect_t r2 = rect_create(p2.x, p2.y, w2->width, w2->height);
     return is_rect_overlap(r1, r2);

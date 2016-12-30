@@ -28,8 +28,8 @@ uint8_t prev_button_state[3];
 uint8_t curr_button_state[3];
 
 void print_button_state() {
-    qemu_printf("prev state: %d %d %d\n", prev_button_state[0], prev_button_state[1], prev_button_state[2]);
-    qemu_printf("curr state: %d %d %d\n", curr_button_state[0], curr_button_state[1], curr_button_state[2]);
+    //qemu_printf("prev state: %d %d %d\n", prev_button_state[0], prev_button_state[1], prev_button_state[2]);
+    //qemu_printf("curr state: %d %d %d\n", curr_button_state[0], curr_button_state[1], curr_button_state[2]);
 }
 int left_button_down() {
     return !prev_button_state[0] && curr_button_state[0];
@@ -150,22 +150,22 @@ void mouse_handler(register_t * regs)
     if(mouse_cycle == 0) {
         if(left_button_down()) {
             msg.sub_type = WINMSG_MOUSE_LEFT_BUTTONDOWN;
-            qemu_printf("left button down\n");
+            //qemu_printf("left button down\n");
             print_button_state();
         }
         if(left_button_up()) {
             msg.sub_type = WINMSG_MOUSE_LEFT_BUTTONUP;
-            qemu_printf("left button up\n");
+            //qemu_printf("left button up\n");
             print_button_state();
         }
         if(right_button_down()) {
             msg.sub_type = WINMSG_MOUSE_RIGHT_BUTTONDOWN;
-            qemu_printf("right button down\n");
+            //qemu_printf("right button down\n");
             print_button_state();
         }
         if(right_button_up()) {
             msg.sub_type = WINMSG_MOUSE_RIGHT_BUTTONUP;
-            qemu_printf("right button up\n");
+            //qemu_printf("right button up\n");
             print_button_state();
         }
         msg.window = query_window_by_point(mouse_x, mouse_y);

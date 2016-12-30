@@ -211,7 +211,7 @@ int kmain(multiboot_info_t * mb_info) {
     draw_text(&canvas_bar, get_current_datetime_str(), 1, 115);
     display_all_window();
     video_memory_update(NULL, 0);
-    move_window(blue_w, 600, 200);
+    print_windows_depth();
 #endif
 
     printf("drawing finish");

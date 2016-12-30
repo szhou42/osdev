@@ -25,11 +25,11 @@ listnode_t * list_insert_front(list_t * list, void * val);
 
 void list_insert_back(list_t * list, void * val);
 
-void list_remove_node(list_t * list, listnode_t * node);
+void * list_remove_node(list_t * list, listnode_t * node);
 
-void list_remove_front(list_t * list);
+void * list_remove_front(list_t * list);
 
-void list_remove_back(list_t * list);
+void * list_remove_back(list_t * list);
 
 void list_push(list_t * list, void * val);
 
@@ -51,6 +51,6 @@ int list_contain(list_t * list, void * val);
 
 listnode_t * list_get_node_by_index(list_t * list, int index);
 
-void list_remove_by_index(list_t * list, int index);
+void * list_remove_by_index(list_t * list, int index);
 
 #endif

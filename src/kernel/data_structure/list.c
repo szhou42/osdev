@@ -23,18 +23,19 @@ uint32_t list_size(list_t * list) {
 /*
  * Given a listnode, remove it from lis
  * */
-void list_remove_node(list_t * list, listnode_t * node) {
+void * list_remove_node(list_t * list, listnode_t * node) {
+    void * val = node->val;
     if(list->head == node)
-        list_remove_front(list);
+        return list_remove_front(list);
     else if(list->tail == node)
-        list_remove_back(list);
+        return list_remove_back(list);
     else {
         node->next->prev = node->prev;
         node->prev->next = node->next;
         list->size--;
-        kfree(node->val);
         kfree(node);
     }
+    return val;
 }
 /*
  * Insert a value at the front of list
@@ -60,6 +61,8 @@ listnode_t * list_insert_front(list_t * list, void * val) {
 void list_insert_back(list_t * list, void * val) {
 	listnode_t * t = kcalloc(sizeof(listnode_t), 1);
 	t->prev = list->tail;
+    if(list->tail)
+        list->tail->next = t;
 	t->val = val;
 
 	if(!list->head)
@@ -72,29 +75,31 @@ void list_insert_back(list_t * list, void * val) {
 /*
  * Remove a value at the front of list
  * */
-void list_remove_front(list_t * list) {
+void * list_remove_front(list_t * list) {
 	if(!list->head) return;
 	listnode_t * t = list->head;
+    void * val = t->val;
 	list->head = t->next;
 	if(list->head)
 		list->head->prev = NULL;
-	kfree(t->val);
 	kfree(t);
 	list->size--;
+    return val;
 }
 
 /*
  * Remove a value at the back of list
  * */
-void list_remove_back(list_t * list) {
+void * list_remove_back(list_t * list) {
 	if(!list->head) return;
 	listnode_t * t = list->tail;
+    void * val = t ->val;
 	list->tail = t->prev;
 	if(list->tail)
 		list->tail->next = NULL;
-	kfree(t->val);
 	kfree(t);
 	list->size--;
+    return val;
 }
 
 /*
@@ -174,9 +179,9 @@ listnode_t * list_get_node_by_index(list_t * list, int index) {
     return NULL;
 }
 
-void list_remove_by_index(list_t * list, int index) {
+void * list_remove_by_index(list_t * list, int index) {
     listnode_t * node = list_get_node_by_index(list, index);
-    list_remove_node(list, node);
+    return list_remove_node(list, node);
 }
 
 void list_destroy(list_t * list) {
@@ -185,7 +190,6 @@ void list_destroy(list_t * list) {
 	while(node != NULL) {
 		listnode_t * save = node;
 		node = node->next;
-		kfree(save->val);
 		kfree(save);
 	}
 	// Free the list
@@ -193,6 +197,5 @@ void list_destroy(list_t * list) {
 }
 
 void listnode_destroy(listnode_t * node) {
-	kfree(node->val);
 	kfree(node);
 }

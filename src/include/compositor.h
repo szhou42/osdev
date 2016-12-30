@@ -112,6 +112,10 @@ typedef struct winmsg {
     window_t * window;
 }winmsg_t;
 
+void print_windows_depth();
+
+void window_set_focus(window_t * w);
+
 void copy_rect(uint32_t * dst, rect_t r);
 
 void compositor_init();

@@ -128,11 +128,13 @@ int is_line_overlap(int line1_x1, int line1_x2, int line2_x1, int line2_x2) {
 int is_rect_overlap(rect_t rect1, rect_t rect2) {
     // if both horizontal and vertical range of two rect overlaps, then they must overlap
     //return is_line_overlap(rect1.x, rect1.x + rect1.width - 1, rect2.x, rect2.x + rect2.width - 1) && is_line_overlap(rect1.y, rect1.y + rect1.height - 1, rect2.y, rect2.y + rect2.height - 1);
+
     if((rect1.x > rect2.x + rect2.width) || (rect1.x + rect1.width < rect2.x))
         return 0;
     if((rect1.y > rect2.y + rect2.height) || (rect1.y + rect1.height < rect2.y))
         return 0;
     return 1;
+
 }
 
 rect_t find_rect_overlap(rect_t rect1, rect_t rect2) {

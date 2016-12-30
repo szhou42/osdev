@@ -65,7 +65,9 @@ void tree_remove(gtree_t * tree, gtreenode_t * remove_node) {
     gtreenode_t * parent = tree_find_parent(tree, remove_node, &child_index);
     // Do treenode remove in here:
     if(parent != NULL) {
-        list_remove_by_index(parent->children, child_index);
+        gtreenode_t * freethis = list_remove_by_index(parent->children, child_index);
+        // Free tree node here
+        kfree(freethis);
     }
 }
 
@@ -97,7 +99,6 @@ void tree2array_recur(gtreenode_t * subroot, void ** array, int * size) {
     array[*size] = curr_val;
     *size = *size + 1;
     foreach(child, subroot->children) {
-        gtreenode_t * curr_treenode = (gtreenode_t*)child->val;
         tree2array_recur(child->val, array, size);
     }
 }
