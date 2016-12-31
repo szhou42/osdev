@@ -10,6 +10,7 @@
 #include <serial.h>
 #include <timer.h>
 #include <math.h>
+#include <mouse.h>
 
 
 /*
@@ -34,8 +35,8 @@ uint32_t * intermediate_framebuffer;
 /*
  * In OS X's window's title bar, each row's color increments, instead of having one color for the entire title bar
  */
-uint32_t title_bar_colors[18] = {0x00EDEDED, 0x00EBEBEB, 0x00E9E9E9, 0x00E7E7E7, 0x00E6E6E6, 0x00E4E4E4, 0x00E3E3E3, 0x00E1E1E1, 0x00DFDFDF, 0x00DDDDDD, 0x00DCDCDC,\
-    0x00DADADA, 0x00D8D8D8, 0x00D7D7D7, 0x00D6D6D6, 0x00D5D5D5, 0x00C7C7C7, 0x00D7D7D7};
+uint32_t title_bar_colors[TITLE_BAR_HEIGHT] = {0x00F3F3F3, 0x00EBEBEB, 0x00EBEBEB, 0x00E9E9E9, 0x00E7E7E7, 0x00E6E6E6, 0x00E5E5E5, 0x00E3E3E3, 0x00E2E2E2, 0x00E0E0E0, 0x00DFDFDF, 0x00DDDDDD,\
+    0x00DCDCDC, 0x00DADADA, 0x00D9D9D9, 0x00D8D8D8, 0x00D7D7D7, 0x00D5D5D5, 0x00D4D4D4, 0x00BCBCBC, 0x00E2E2E2};
 
 rect_t rects[2];
 
@@ -242,7 +243,7 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
         else if(strcmp(name, "window_black") == 0)
             memsetdw(w->frame_buffer, 0x00000001, width * height);
         else if(strcmp(name, "window_classic") == 0)
-            memsetdw(w->frame_buffer, 0x00D5D5D5, width * height);
+            memsetdw(w->frame_buffer, 0x00eeeeee, width * height);
         else if(strcmp(name, "window_xp") == 0)
             memsetdw(w->frame_buffer, 0x00F7F3F0, width * height);
         else if(strcmp(name, "alertbox_button") == 0)
@@ -278,7 +279,7 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
 }
 
 void window_set_focus(window_t * w) {
-
+    if(focus_w == w) return;
     // Bring window to the front
     // Destroy the under and above list and re-calculate them
     if(w->type != WINDOW_SUPER) {
@@ -318,12 +319,27 @@ void window_set_focus(window_t * w) {
         p = get_canonical_coordinates(w);
         rect_t r = rect_create(p.x, p.y, w->width, w->height);
         window_display(w, NULL, 0);
+        draw_mouse();
         video_memory_update(&r, 1);
     }
     focus_w = w;
     qemu_printf("Set focus finish\n");
     print_windows_depth();
 }
+
+/*
+* Add round corners to window by setting some pixels transparent
+**/
+void window_add_round_corner(window_t * w) {
+    canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
+    for(int i = 0; i < 5; i++) {
+        for(int j = 0; j < 5 - i; j++) {
+            set_pixel(&canvas, 0x0, j, i);
+            set_pixel(&canvas, 0x0, w->width - 5 + i + j, i);
+        }
+    }
+}
+
 /*
  * Below is a set of functions that add components to a window by either 1) drawing on the frame buffer of the window, or adding child window(which has its own frame buffer and relative coord)
  * */
@@ -336,7 +352,7 @@ void window_add_headline(window_t * w, char * headline) {
     // Draw a rectangle at the start of the window
     // It should have a headline area that gradually increases color in each row
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
-    for(int i = 0; i < 18; i++) {
+    for(int i = 0; i < TITLE_BAR_HEIGHT; i++) {
         set_fill_color(title_bar_colors[i]);
         draw_line(&canvas, 0, i, w->width, i);
     }
@@ -449,6 +465,7 @@ void display_all_window() {
     for(int i = 0; i < size; i++) {
         window_display(windows_array[i], NULL, 0);
     }
+    draw_mouse();
 }
 
 /*
@@ -488,6 +505,12 @@ void set_window_fillcolor(window_t * w, uint32_t color) {
  * Move window to a start at (x,y)
  */
 void move_window(window_t * w, int x, int y) {
+/*
+    The main reason of the move window bug is that, there are two rectangles that have intersections with the black window, but there is only one
+    intersection_rect field in a window, make it a list!!
+
+*/
+    rect_t dirty_rects[3];
     moving = 1;
     // Do some input check here, make sure the window can not be move outside of the screen
     if(x < 0)
@@ -538,59 +561,69 @@ void move_window(window_t * w, int x, int y) {
         rect2.y = y + oldh;
     }
     if(rect1.width != 0 && rect1.height != 0) {
-        rects[rect_size++] = rect1;
+        dirty_rects[rect_size++] = rect1;
         qemu_printf("%dth rect: [x: %d y: %d w: %d h: %d]\n", rect_size, rect1.x, rect1.y, rect1.width, rect1.height);
     }
     if(rect2.width != 0 && rect2.height != 0) {
-        rects[rect_size++] = rect2;
+        dirty_rects[rect_size++] = rect2;
         qemu_printf("%dth rect: [x: %d y: %d w: %d h: %d]\n", rect_size, rect2.x, rect2.y, rect2.width, rect2.height);
     }
 
     // Step2: What are the windows and their intersections related to each rectangle
     int size = 0;
     int new_size = 0;
-    for(int i = 0; i < rect_size; i++) {
-        size = 0;
-        tree2array(windows_tree, (void**)windows_array, &size);
-        for(int i = 0; i < size; i++) {
-            window_t * curr_w = windows_array[i];
-            if(curr_w->is_minimized || curr_w == w) continue;
-            p = get_canonical_coordinates(curr_w);
-            curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
-            if(is_rect_overlap(rects[i], curr_rect)) {
-                curr_w->intersection_rect = find_rect_overlap(rects[i], curr_rect);
-                windows_array[new_size++] = curr_w;
+    tree2array(windows_tree, (void**)windows_array, &size);
+    window_dirty_region_t * dirty_regions = kcalloc(size, sizeof(window_dirty_region_t));
+    for(int j = 0; j < size; j++) {
+        window_t * curr_w = windows_array[j];
+        if(curr_w->is_minimized || curr_w == w) continue;
+        p = get_canonical_coordinates(curr_w);
+        curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
+        for(int i = 0; i < rect_size; i++) {
+            if(is_rect_overlap(dirty_rects[i], curr_rect)) {
+                // MAKE THIS A LIST OF INTERSECTION!
+                dirty_regions[new_size].w = curr_w;
+                dirty_regions[new_size].rects[dirty_regions[new_size].len] = find_rect_overlap(dirty_rects[i], curr_rect);
+                dirty_regions[new_size].len++;
             }
         }
-        // Step3: Sort windows by depth and draw window intersection
-        // Bubble sort window list, by depth
-        for(int i = 0; i < new_size - 1; i++) {
-            for(int j = 0; j < new_size - 1; j++) {
-                if(windows_array[j]->depth < windows_array[j + 1]->depth) {
-                    window_t * swap = windows_array[j];
-                    windows_array[j] = windows_array[j + 1];
-                    windows_array[j + 1] = swap;
-                }
-            }
-        }
+        new_size++;
+    }
 
-        for(int i = 0; i < new_size; i++) {
-            if(windows_array[i] == w) continue;
-            window_display(windows_array[i], &windows_array[i]->intersection_rect, 1);
+
+    // Step3: Sort windows by depth and draw window intersection
+    for(int k = 0; k < new_size - 1; k++) {
+        for(int p = 0; p < new_size - 1; p++) {
+            if(dirty_regions[p].w->depth < dirty_regions[p + 1].w->depth) {
+                window_dirty_region_t swap = dirty_regions[p];
+                dirty_regions[p] = dirty_regions[p + 1];
+                dirty_regions[p + 1] = swap;
+            }
         }
     }
+
+    // Before rendering, minimize the size of rectangles even further checking whether the region is covered by other windows(back face culling ?)
+
+
+
+    for(int q = 0; q < new_size; q++) {
+        if(dirty_regions[q].w == w) continue;
+        window_display(dirty_regions[q].w, dirty_regions[q].rects, dirty_regions[q].len);
+    }
+
     // Step4: Draw window w on new position
     window_display(w, NULL, 0);
+    draw_mouse();
 
     curr_rect = rect_create(x, y, w->width, w->height);
-    rects[rect_size++] = curr_rect;
+    dirty_rects[rect_size++] = curr_rect;
 
     qemu_printf("------\n");
     for(int i = 0; i < rect_size; i++) {
-        qemu_printf("rects[%d]: [%d,%d,%d,%d]", i, rects[i].x, rects[i].y, rects[i].width, rects[i].height);
+        qemu_printf("dirty_rects[%d]: [%d,%d,%d,%d]", i, dirty_rects[i].x, dirty_rects[i].y, dirty_rects[i].width, dirty_rects[i].height);
     }
     qemu_printf("------\n");
-    video_memory_update(rects, rect_size);
+    video_memory_update(dirty_rects, rect_size);
     qemu_printf("Move finish\n");
     moving = 0;
 }
@@ -643,7 +676,7 @@ void minimize_window(window_t * w) {
     for(int i = 0; i < new_size; i++) {
         window_display(windows_array[i], &windows_array[i]->intersection_rect, 1);
     }
-
+    draw_mouse();
     // Step4, draw each of the window(only the part that's not covered), from the deepest one to the shalloest one
     //display_all_window();
     rects[0] = w_rect;
@@ -697,7 +730,7 @@ void close_window(window_t * w) {
     for(int i = 0; i < new_size; i++) {
         window_display(windows_array[i], &windows_array[i]->intersection_rect, 1);
     }
-
+    draw_mouse();
     // Step4, draw each of the window(only the part that's not covered), from the deepest one to the shalloest one
     rects[0] = w_rect;
     video_memory_update(rects, 1);

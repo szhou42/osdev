@@ -179,6 +179,7 @@ int kmain(multiboot_info_t * mb_info) {
     window_add_minimize_button(red_w);
     canvas_t canvas_red = canvas_create(red_w->width, red_w->height, red_w->frame_buffer);
     draw_text(&canvas_red, "Terminal", 1, 42);
+    window_add_round_corner(red_w);
 
     // File Browser
     window_t * green_w = window_create(get_super_window(), 100, 100, 400, 400, WINDOW_NORMAL, "window_classic");
@@ -188,6 +189,7 @@ int kmain(multiboot_info_t * mb_info) {
     canvas_t canvas_green = canvas_create(green_w->width, green_w->height, green_w->frame_buffer);
     set_font_color(VESA_COLOR_BLACK + 1);
     draw_text(&canvas_green, "File browser", 1, 19);
+    window_add_round_corner(green_w);
 
 
     // Web browser
@@ -198,6 +200,8 @@ int kmain(multiboot_info_t * mb_info) {
     canvas_t canvas_blue = canvas_create(blue_w->width, blue_w->height, blue_w->frame_buffer);
     set_font_color(VESA_COLOR_BLACK + 1);
     draw_text(&canvas_blue, "Web Browser", 1, 19);
+    window_add_round_corner(blue_w);
+
     window_t * web_button = window_create(blue_w, 30, 30, 60, 30, WINDOW_CONTROL, "window_xp");
     canvas_t canvas_button = canvas_create(web_button->width, web_button->height, web_button->frame_buffer);
     draw_text(&canvas_button, "Button", 1, 1);

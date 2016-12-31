@@ -31,7 +31,7 @@ extern uint32_t fill_color;
 
 #define WINMSG_KEYBOARD 1
 
-#define TITLE_BAR_HEIGHT 18
+#define TITLE_BAR_HEIGHT 21
 
 typedef struct point {
     int x;
@@ -114,6 +114,15 @@ typedef struct winmsg {
     // Involved window
     window_t * window;
 }winmsg_t;
+
+typedef struct window_dirty_region {
+    window_t * w;
+    rect_t rects[3];
+    int len;
+}window_dirty_region_t;
+
+
+void window_add_round_corner(window_t * w);
 
 int is_moving();
 
