@@ -89,19 +89,14 @@ void mouse_handler(register_t * regs)
             mouse_cycle++;
             break;
         case 2:
-            if(is_moving()) {
-                // Dirty hack... prevent mouse from moving too fast
-                mouse_cycle = 0;
-                return;
-            }
             mouse_byte[2]= mouse_read();
             // Position is not changed
             //if(mouse_byte[1] == 0 && mouse_byte[2] == 0)
             //    break;
 
             // Update mouse position
-            mouse_x = mouse_x + mouse_byte[1];
-            mouse_y = mouse_y - mouse_byte[2];
+            mouse_x = mouse_x + mouse_byte[1] / 4;
+            mouse_y = mouse_y - mouse_byte[2] / 4;
 
             // Adjust mouse position
             if(mouse_x < 0)
@@ -149,6 +144,7 @@ void mouse_handler(register_t * regs)
             msg.sub_type = WINMSG_MOUSE_MOVE;
             msg.change_x = mouse_byte[1];
             msg.change_y = -mouse_byte[2];
+            //qemu_printf("x change = %d y change = %d\n", msg.change_x, msg.change_y);
             mouse_cycle = 0;
             break;
     }
@@ -222,7 +218,7 @@ void mouse_init() {
     next_mouse_region.region = kmalloc(CURSOR_WIDTH * CURSOR_HEIGHT * 4);
     memsetdw(next_mouse_region.region, 0x0000ff00, CURSOR_WIDTH * CURSOR_HEIGHT);
     // Cursoe icon
-    cursor_icon = bitmap_create("/cursor4.bmp");
+    cursor_icon = bitmap_create("/cursor.bmp");
     current_mouse_region.r = next_mouse_region.r;
     bitmap_to_framebuffer2(cursor_icon, current_mouse_region.region);
     // Draw the mouse

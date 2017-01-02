@@ -55,7 +55,7 @@ void sse_init();
 int kmain(multiboot_info_t * mb_info) {
 
     video_init();
-    printf("%s\n", simpleos_logo);
+    qemu_printf("%s\n", simpleos_logo);
 
     uint32_t ret = sse_available();
     qemu_printf("Is sse available? (%d)\n", ret);
@@ -73,46 +73,46 @@ int kmain(multiboot_info_t * mb_info) {
 
     // Initialize everything (green)
     set_curr_color(LIGHT_GREEN);
-    printf("Initializing video(text mode 80 * 25)...\n");
+    qemu_printf("Initializing video(text mode 80 * 25)...\n");
 
-    printf("Initializing gdt, idt and tss...\n");
+    qemu_printf("Initializing gdt, idt and tss...\n");
     gdt_init();
     idt_init();
     tss_init(5, 0x10, 0);
 
-    printf("Initializing physical memory manager...\n");
+    qemu_printf("Initializing physical memory manager...\n");
     pmm_init(1096 * M);
 
-    printf("Initializing paging...\n");
+    qemu_printf("Initializing paging...\n");
     paging_init();
 
-    printf("Initializing kernel heap...\n");
+    qemu_printf("Initializing kernel heap...\n");
     kheap_init(KHEAP_START, KHEAP_START + KHEAP_INITIAL_SIZE, KHEAP_MAX_ADDRESS);
 
-    printf("Initializing timer...\n");
+    qemu_printf("Initializing timer...\n");
     timer_init();
 
-    printf("Initializing pci...\n");
+    qemu_printf("Initializing pci...\n");
     pci_init();
 
-    printf("Initializing keyboard...\n");
+    qemu_printf("Initializing keyboard...\n");
     keyboard_init();
 
-    printf("Initializing vfs, ext2 and ata/dma...\n");
+    qemu_printf("Initializing vfs, ext2 and ata/dma...\n");
     vfs_init();
     ata_init();
     ext2_init("/dev/hda", "/");
 
 
-    printf("Initializing real time clock...\n");
+    qemu_printf("Initializing real time clock...\n");
     rtc_init();
-    printf("Current date and time: %s\n", datetime_to_str(&current_datetime));
+    qemu_printf("Current date and time: %s\n", datetime_to_str(&current_datetime));
     //process_init();
 
 
     set_curr_color(WHITE);
 
-    //printf("Initializing system calls and enter usermode...\n");
+    //qemu_printf("Initializing system calls and enter usermode...\n");
     //syscall_init();
     //vfs_db_listdir("/");
 
@@ -121,7 +121,7 @@ int kmain(multiboot_info_t * mb_info) {
     //tss_set_stack(0x10, esp);
 
 #if NETWORK_MODE
-    printf("Initializing network driver...\n");
+    qemu_printf("Initializing network driver...\n");
     rtl8139_init();
 
     uint8_t mac_addr[6];
@@ -140,7 +140,7 @@ int kmain(multiboot_info_t * mb_info) {
     ip_addr[3] = 15;
     char * str = "hello_ip";
     //ethernet_send_packet(mac_addr, str, strlen(str), 0x0021);
-    //printf("Packet sent\n");
+    //qemu_printf("Packet sent\n");
     ip_send_packet(ip_addr, str, strlen(str));
     for(;;);
 #endif
@@ -163,7 +163,7 @@ int kmain(multiboot_info_t * mb_info) {
     vfs_read(f, 0, size, buf);
     for(int i = 0; i < size; i++) {
          if(buf[i] != 0x1)
-            printf("something is wrong\n");
+            qemu_printf("something is wrong\n");
     }
 #endif
 
@@ -209,7 +209,7 @@ int kmain(multiboot_info_t * mb_info) {
 
 
     // Top desktop bar
-    window_t * bar_w = window_create(get_super_window(), 0, 0, 1024, 25, WINDOW_NORMAL, "desktop_bar");
+    window_t * bar_w = window_create(get_super_window(), 0, 0, 1024, 25, WINDOW_DESKTOP_BAR, "desktop_bar");
     canvas_t canvas_bar = canvas_create(bar_w->width, bar_w->height, bar_w->frame_buffer);
     set_font_color(VESA_COLOR_BLACK+1);
     draw_text(&canvas_bar, get_current_datetime_str(), 1, 115);
@@ -218,10 +218,10 @@ int kmain(multiboot_info_t * mb_info) {
     print_windows_depth();
 #endif
 
-    printf("drawing finish");
+    qemu_printf("drawing finish");
     set_curr_color(LIGHT_RED);
 
-    printf("\nDone!\n");
+    qemu_printf("\nDone!\n");
     for(;;);
     return 0;
 }

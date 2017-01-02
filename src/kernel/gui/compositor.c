@@ -44,6 +44,7 @@ int left_button_held_down;
 int right_button_held_down;
 
 int moving = 0;
+window_t * moving_window;
 
 #define DEBUG_GUI 0
 
@@ -88,17 +89,26 @@ void window_message_handler(winmsg_t * msg) {
     point_t p = get_canonical_coordinates(w);
     int cursor_x = msg->cursor_x - p.x;
     int cursor_y = msg->cursor_y - p.y;
-
+    //qemu_printf("%s(d = %d): ", w->name, w->depth);
     rect_t r = rect_create(0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
     switch(msg->msg_type) {
         case WINMSG_MOUSE:
             if(msg->sub_type == WINMSG_MOUSE_MOVE) {
+                //qemu_printf("mouse move\n");
                 if(left_button_held_down) {
                     // Title bar
                     r.x = TITLE_BAR_HEIGHT * 2;
                     r.width = w->width - r.x;
-                    if(is_point_in_rect(cursor_x, cursor_y, &r)) {
-                        move_window(w, w->x + msg->change_x, w->y + msg->change_y);
+                    if(is_point_in_rect(cursor_x, cursor_y, &r) || moving) {
+                        if(moving) {
+                            qemu_printf("%s is moving\n", moving_window->name);
+                            move_window(moving_window, moving_window->x + msg->change_x, moving_window->y + msg->change_y);
+                        }
+                        else {
+                            qemu_printf("%s is moving\n", w->name);
+                            move_window(w, w->x + msg->change_x, w->y + msg->change_y);
+                        }
+
                     }
                 }
             }
@@ -109,11 +119,16 @@ void window_message_handler(winmsg_t * msg) {
 
             if(msg->sub_type == WINMSG_MOUSE_RIGHT_BUTTONDOWN) {
                 right_button_held_down = 1;
-                qemu_printf("right button held down\n");
+                //qemu_printf("right button held down\n");
             }
 
             if(msg->sub_type == WINMSG_MOUSE_LEFT_BUTTONUP) {
+                qemu_printf("left button up\n");
                 left_button_held_down = 0;
+                if(moving) {
+                    moving = 0;
+                    moving_window = NULL;
+                }
                 if((w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT) && strcmp(w->name, "desktop_bar") != 0){
                     // Close button
                     if(w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT) {
@@ -141,16 +156,17 @@ void window_message_handler(winmsg_t * msg) {
             }
 
             if(msg->sub_type == WINMSG_MOUSE_LEFT_BUTTONDOWN) {
+                qemu_printf("left button down\n");
                 left_button_held_down = 1;
                 // Set window focus
                 window_set_focus(w);
-                qemu_printf("left button held down\n");
+                //qemu_printf("left button held down\n");
             }
 
             break;
         case WINMSG_KEYBOARD:
             key_pressed = msg->key_pressed;
-            qemu_printf("%s receives a key press [%c]\n", w->name, key_pressed);
+            //qemu_printf("%s receives a key press [%c]\n", w->name, key_pressed);
             switch(key_pressed) {
                 case 'u':
                     move_window(w, p.x - 10, p.y - 10);
@@ -283,7 +299,7 @@ void window_set_focus(window_t * w) {
     // Bring window to the front
     // Destroy the under and above list and re-calculate them
     if(w->type != WINDOW_SUPER) {
-        qemu_printf("Set focus start\n");
+        //qemu_printf("Set focus start\n");
         print_windows_depth();
         int idx = 0;
         point_t p = get_canonical_coordinates(w);
@@ -323,7 +339,7 @@ void window_set_focus(window_t * w) {
         video_memory_update(&r, 1);
     }
     focus_w = w;
-    qemu_printf("Set focus finish\n");
+    //qemu_printf("Set focus finish\n");
     print_windows_depth();
 }
 
@@ -505,13 +521,14 @@ void set_window_fillcolor(window_t * w, uint32_t color) {
  * Move window to a start at (x,y)
  */
 void move_window(window_t * w, int x, int y) {
-/*
-    The main reason of the move window bug is that, there are two rectangles that have intersections with the black window, but there is only one
-    intersection_rect field in a window, make it a list!!
-
-*/
-    rect_t dirty_rects[3];
+    if(moving && moving_window != w) {
+        return;
+    }
     moving = 1;
+    moving_window = w;
+    if(w->type == WINDOW_SUPER || w->type == WINDOW_DESKTOP_BAR)
+        return;
+    rect_t dirty_rects[3];
     // Do some input check here, make sure the window can not be move outside of the screen
     if(x < 0)
         x = 0;
@@ -522,7 +539,7 @@ void move_window(window_t * w, int x, int y) {
     if(y + w->height >= canvas.height)
         y = canvas.height - w->height;
 
-    qemu_printf("Move window from [%d, %d] to [%d, %d], w = %d, h = %d\n", w->x, w->y, x, y, w->width, w->height);
+    //qemu_printf("Move window from [%d, %d] to [%d, %d], w = %d, h = %d\n", w->x, w->y, x, y, w->width, w->height);
     rect_t curr_rect;
     int oldx = w->x;
     int oldy = w->y;
@@ -562,11 +579,11 @@ void move_window(window_t * w, int x, int y) {
     }
     if(rect1.width != 0 && rect1.height != 0) {
         dirty_rects[rect_size++] = rect1;
-        qemu_printf("%dth rect: [x: %d y: %d w: %d h: %d]\n", rect_size, rect1.x, rect1.y, rect1.width, rect1.height);
+        //qemu_printf("%dth rect: [x: %d y: %d w: %d h: %d]\n", rect_size, rect1.x, rect1.y, rect1.width, rect1.height);
     }
     if(rect2.width != 0 && rect2.height != 0) {
         dirty_rects[rect_size++] = rect2;
-        qemu_printf("%dth rect: [x: %d y: %d w: %d h: %d]\n", rect_size, rect2.x, rect2.y, rect2.width, rect2.height);
+        //qemu_printf("%dth rect: [x: %d y: %d w: %d h: %d]\n", rect_size, rect2.x, rect2.y, rect2.width, rect2.height);
     }
 
     // Step2: What are the windows and their intersections related to each rectangle
@@ -618,14 +635,14 @@ void move_window(window_t * w, int x, int y) {
     curr_rect = rect_create(x, y, w->width, w->height);
     dirty_rects[rect_size++] = curr_rect;
 
-    qemu_printf("------\n");
+    //qemu_printf("------\n");
     for(int i = 0; i < rect_size; i++) {
-        qemu_printf("dirty_rects[%d]: [%d,%d,%d,%d]", i, dirty_rects[i].x, dirty_rects[i].y, dirty_rects[i].width, dirty_rects[i].height);
+        //qemu_printf("dirty_rects[%d]: [%d,%d,%d,%d]", i, dirty_rects[i].x, dirty_rects[i].y, dirty_rects[i].width, dirty_rects[i].height);
     }
-    qemu_printf("------\n");
+    //qemu_printf("------\n");
     video_memory_update(dirty_rects, rect_size);
     qemu_printf("Move finish\n");
-    moving = 0;
+    window_set_focus(w);
 }
 
 
@@ -768,14 +785,14 @@ window_t * query_window_by_point(int x, int y) {
     int num = 0;
     find_possible_windows(x, y, windows_tree->root, possible_windows, &num);
     // Now, we get a list of possible windows, find which one is on top (whichever has the most children is the one on top!)
-    int max_children_num = 0;
+    int min_depth = 999999;
     window_t * top_window = NULL;
 
     window_t ** window_list = possible_windows;
     for(int i = 0; i < num; i++) {
         window_t * w = window_list[i];
-        if(list_size(w->under_windows) >= max_children_num && w->is_minimized != 1) {
-            max_children_num = list_size(w->under_windows);
+        if(w->depth <= min_depth && w->is_minimized != 1) {
+            min_depth = w->depth;
             top_window = w;
         }
 

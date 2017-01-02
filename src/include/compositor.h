@@ -11,6 +11,7 @@ extern uint32_t fill_color;
 #define WINDOW_NORMAL  1
 #define WINDOW_CONTROL 2
 #define WINDOW_ALERT   3
+#define WINDOW_DESKTOP_BAR   4
 
 #define VESA_COLOR_WHITE 0x00ffffff
 #define VESA_COLOR_BLACK 0x00000000

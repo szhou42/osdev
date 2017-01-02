@@ -62,7 +62,7 @@ void keyboard_handler(register_t * r)
         }
         else {
             // Key down
-            qemu_printf("Key pressed %c\n", kbdus[scancode]);
+            //qemu_printf("Key pressed %c\n", kbdus[scancode]);
             // Send message to the focus window
             msg.key_pressed = kbdus[scancode];
             msg.window = get_focus_window();

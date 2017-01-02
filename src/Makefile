@@ -1,5 +1,5 @@
 # Setup compiler name and flags
-CC=i686-pc-btos-gcc
+CC=i686-elf-gcc
 CFLAGS=-Wall -Wno-int-conversion -fstrength-reduce -fomit-frame-pointer -finline-functions -nostdlib -ffreestanding -I./include -std=gnu99 -g -ggdb -c
 NASM=nasm
 NASMFLAGS=-f elf32 -O0
@@ -47,7 +47,7 @@ NETWORK_DIR=$(KERNEL_DIR)/network
 all:$(SOURCES) $(EXECUTABLE)
 
 $(EXECUTABLE):$(OBJECTS)
-	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJECTS) -lgcc
+	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(OBJECTS)
 %.o: %.c
 	$(CC) $(CFLAGS) $< -o $@
 %.o: %.asm
