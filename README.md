@@ -8,38 +8,10 @@ The major goals of this project is to build a operating system that has:
 5. Network(TCP, UDP, HTTP)  
 7. User apps(File browser, downloader, editor and etc)
 
-I am also planning to start a similar project called simplegcc(A basic C compiler with both front-end and back-end), after simpleos.
 
 # How to run and test simpleos kernel
-
-## Ubuntu(recommended, not required)
-For OS X users, please use Vagrant to setup a virtual ubuntu environment first  
-<a href = "https://www.vagrantup.com/downloads.html"> Download Vagrant here</a>
-
-Be sure to install virtual box and ruby first.  
-
-A vagrant file is provided here:  
-```
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
-
-Vagrant.configure(2) do |config|
-  config.vm.box = "ubuntu/trusty32"
-  config.ssh.forward_x11 = true
-  config.vm.provider "virtualbox" do |vb|
-    vb.memory = "4096"
-  end
-end
-```
-Create a file named Vagrantfile in any directory you like, then simply do
-```
-vagrant up
-vagrant ssh
-```
-
-## Preparation
+## Preparation(Ubuntu14.04 is a recommended environment for compiling and running simpleos)
 Simpleos use elf-i686-gcc as cross-compiler, please build the cross compiler on your system first.
-For some reasons, I used a different compiler name in my makefile, just make sure to replace it with yours.
 
 <a href = "http://wiki.osdev.org/GCC_Cross-Compiler">How to build a cross compiler</a>  
 Or, a rewritten/translated version of the above wiki article in Simplified Chinese  
@@ -51,39 +23,40 @@ Then, install nasm
 sudo apt-get install nasm
 ```
 
-Now clone the repo to your vm and simply run ./compile.sh to compile the kernel, 
-
 Run the following script to generate 4 hard disk image
 ```
 ./mkext2image.sh
 ```
 
-If you would like to run the os in GUI mode, set the constant GUI_MODE (defined in kmain.c) to 1. 
-Also, be sure to copy a file called wallpaper.bmp(must be 1024 * 768) to ext2_hda.img.  
-Here is how to do it:
+Run the following script to setup the tap network device
 ```
-./mount_disk.sh
-sudo cp wallpaper.bmp /mnt
-./umount_disk.sh
+./setup_tap_device.sh
+```
+
+Note: The path of executable qemu-bridge-helper may vary, and so you should manually replace this path in qemu_run.sh, kvm.sh and debug_qemu.sh first. 
+Use this command to find the path of qemu-bridge-helper 
+```
+cd ~
+find . -iname qemu-bridge-helper
+```
+
+If you would like to run the os in GUI mode, set the constant GUI_MODE (defined in kmain.c) to 1. 
+If you would like to run the os in Network mode, set the constant NETWORK_MODE (defined in kmain.c) to 1. 
+
+Now run the following script to compile the kernel
+```
+./compile.sh
 ```
 
 And then choose one of the following simulator to boot simpleos. QEMU is more recommended.
 
 ## QEMU
 1.  Run sudo apt-get install qemu-system
-2.  Run ./qemu_run.sh to boot simpleos
+2.  Run ./qemu_run.sh to boot simpleos(or ./kvm.sh if your environment supports kvm)
 
 
 ### Debug with QEMU
 1. run ./debug_qemu.sh
-
-## Bochs(don't do this, somehow i deleted the grub image, just use QEMU :) )
-1.  sudo apt-get install bochs
-2.  sudo apt-get install bochs-x
-3.  sudo apt-get install bochs-sdl
-4.  If you have problems with bochs-x(which in my case it is), add a line "display_library: sdl" in bochsrc.txt, if you're using my bochsrc.txt, just ignore this step
-5.  run ./update_image.sh to poke your kernel binary into the floppy image file
-6.  run ./run_bochs to boot simpleos
 
 
 # Plan

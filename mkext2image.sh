@@ -24,3 +24,6 @@ cp ext2_hda.img ext2_hdc.img
 cp ext2_hda.img ext2_hdd.img
 printf "ext2-formatted disk, hda, hdb, hdc, and hdd created\n"
 
+./mount_disk.sh
+cp -r files/* /mnt
+./umount_disk.sh

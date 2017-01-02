@@ -5,6 +5,7 @@
 #include <draw.h>
 #include <bitmap.h>
 #include <serial.h>
+#include <math.h>
 
 int mouse_x;
 int mouse_y;
@@ -95,8 +96,11 @@ void mouse_handler(register_t * regs)
             //    break;
 
             // Update mouse position
-            mouse_x = mouse_x + mouse_byte[1] / 4;
-            mouse_y = mouse_y - mouse_byte[2] / 4;
+            // Transform delta values using some sort of log function
+            int scale_x = abs(mouse_byte[1]) / 5 + 2;
+            int scale_y = abs(mouse_byte[2]) / 5 + 2;
+            mouse_x = mouse_x + scale_x * sign(mouse_byte[1]);
+            mouse_y = mouse_y - scale_y * sign(mouse_byte[2]);
 
             // Adjust mouse position
             if(mouse_x < 0)
@@ -144,7 +148,7 @@ void mouse_handler(register_t * regs)
             msg.sub_type = WINMSG_MOUSE_MOVE;
             msg.change_x = mouse_byte[1];
             msg.change_y = -mouse_byte[2];
-            //qemu_printf("x change = %d y change = %d\n", msg.change_x, msg.change_y);
+            qemu_printf("x change = %d y change = %d\n", msg.change_x, msg.change_y);
             mouse_cycle = 0;
             break;
     }

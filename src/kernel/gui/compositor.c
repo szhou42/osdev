@@ -532,8 +532,8 @@ void move_window(window_t * w, int x, int y) {
     // Do some input check here, make sure the window can not be move outside of the screen
     if(x < 0)
         x = 0;
-    if(y < 0)
-        y = 0;
+    if(y < desktop_bar->y + desktop_bar->height)
+        y = desktop_bar->y + desktop_bar->y + desktop_bar->height;
     if(x + w->width >= canvas.width)
         x = canvas.width - w->width;
     if(y + w->height >= canvas.height)
