@@ -30,6 +30,7 @@
 #include <ethernet.h>
 #include <ip.h>
 #include <serial.h>
+#include <blend.h>
 
 
 extern uint8_t * bitmap;
@@ -180,7 +181,9 @@ int kmain(multiboot_info_t * mb_info) {
     canvas_t canvas_red = canvas_create(red_w->width, red_w->height, red_w->frame_buffer);
     draw_text(&canvas_red, "Terminal", 1, 42);
     window_add_round_corner(red_w);
+    blend_windows(red_w);
 
+    /*
     // File Browser
     window_t * green_w = window_create(get_super_window(), 100, 100, 400, 400, WINDOW_NORMAL, "window_classic");
     window_add_headline(green_w, "classic");
@@ -205,7 +208,7 @@ int kmain(multiboot_info_t * mb_info) {
     window_t * web_button = window_create(blue_w, 30, 30, 60, 30, WINDOW_CONTROL, "window_xp");
     canvas_t canvas_button = canvas_create(web_button->width, web_button->height, web_button->frame_buffer);
     draw_text(&canvas_button, "Button", 1, 1);
-
+*/
 
 
     // Top desktop bar
@@ -213,6 +216,7 @@ int kmain(multiboot_info_t * mb_info) {
     canvas_t canvas_bar = canvas_create(bar_w->width, bar_w->height, bar_w->frame_buffer);
     set_font_color(VESA_COLOR_BLACK+1);
     draw_text(&canvas_bar, get_current_datetime_str(), 1, 115);
+    blend_windows(bar_w);
     display_all_window();
     video_memory_update(NULL, 0);
     print_windows_depth();

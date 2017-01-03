@@ -60,6 +60,7 @@ typedef struct window {
 
     // Frame buffer
     uint32_t * frame_buffer;
+    uint32_t * blended_framebuffer;
     // Other properties of a window
 
     // Parent window
@@ -151,9 +152,11 @@ window_t * get_super_window();
 
 window_t * get_desktop_bar();
 
-void minimize_window(window_t * w);
+void blend_windows(window_t * w);
 
-void maximize_window(window_t * w);
+void blend_window_rect(window_t * top_w, window_t * bottom_w);
+
+void minimize_window(window_t * w);
 
 void close_window(window_t * w);
 

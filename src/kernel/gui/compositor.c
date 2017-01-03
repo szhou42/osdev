@@ -11,6 +11,7 @@
 #include <timer.h>
 #include <math.h>
 #include <mouse.h>
+#include <blend.h>
 
 
 /*
@@ -249,23 +250,24 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
     w->is_minimized = 0;
 
     w->frame_buffer = kmalloc(width * height * 4);
+    w->blended_framebuffer = kmalloc(width * height * 4);
     if(parent != NULL) {
         if(strcmp(name, "window_red") == 0)
-            memsetdw(w->frame_buffer, 0x00ff0000, width * height);
+            memsetdw(w->frame_buffer, 0xffff0000, width * height);
         else if(strcmp(name, "window_green") == 0)
-            memsetdw(w->frame_buffer, 0x0000ff00, width * height);
+            memsetdw(w->frame_buffer, 0xff00ff00, width * height);
         else if(strcmp(name, "window_blue") == 0)
-            memsetdw(w->frame_buffer, 0x000000ff, width * height);
+            memsetdw(w->frame_buffer, 0xff0000ff, width * height);
         else if(strcmp(name, "window_black") == 0)
             memsetdw(w->frame_buffer, 0x00000001, width * height);
         else if(strcmp(name, "window_classic") == 0)
-            memsetdw(w->frame_buffer, 0x00eeeeee, width * height);
+            memsetdw(w->frame_buffer, 0xffeeeeee, width * height);
         else if(strcmp(name, "window_xp") == 0)
-            memsetdw(w->frame_buffer, 0x00F7F3F0, width * height);
+            memsetdw(w->frame_buffer, 0xffF7F3F0, width * height);
         else if(strcmp(name, "alertbox_button") == 0)
-            memsetdw(w->frame_buffer, 0x00F7F3F0, width * height);
+            memsetdw(w->frame_buffer, 0xffF7F3F0, width * height);
         else if(strcmp(name, "desktop_bar") == 0)
-            memsetdw(w->frame_buffer, 0x00DCE8EC , width * height);
+            memsetdw(w->frame_buffer, 0xffDCE8EC , width * height);
 
     }
     w->fill_color = VESA_COLOR_WHITE;
@@ -344,8 +346,8 @@ void window_set_focus(window_t * w) {
 }
 
 /*
-* Add round corners to window by setting some pixels transparent
-**/
+ * Add round corners to window by setting some pixels transparent
+ **/
 void window_add_round_corner(window_t * w) {
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
     for(int i = 0; i < 5; i++) {
@@ -369,7 +371,7 @@ void window_add_headline(window_t * w, char * headline) {
     // It should have a headline area that gradually increases color in each row
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
     for(int i = 0; i < TITLE_BAR_HEIGHT; i++) {
-        set_fill_color(title_bar_colors[i]);
+        set_fill_color(title_bar_colors[i] | 0x88000000);
         draw_line(&canvas, 0, i, w->width, i);
     }
 }
@@ -429,14 +431,13 @@ void recur_add_under_windows(window_t * w, gtreenode_t * subroot) {
  * Now, i m just going to draw it in the screen frame buffer
  * */
 void window_display(window_t * w, rect_t * rects, int size) {
+    rect_region_t rect_reg;
     if(w->is_minimized || w->parent->is_minimized) return;
     set_fill_color(w->border_color);
 
-
     // If the frame buffer is not null, also draw the frame buffer
     if(w->frame_buffer) {
-        rect_region_t rect_reg;
-        rect_reg.region = w->frame_buffer;
+        rect_reg.region = w->blended_framebuffer;
         point_t p = get_canonical_coordinates(w);
         if(rects) {
             // Draw part(s) of the window
@@ -480,6 +481,7 @@ void display_all_window() {
 
     for(int i = 0; i < size; i++) {
         window_display(windows_array[i], NULL, 0);
+        video_memory_update(NULL, 0);
     }
     draw_mouse();
 }
@@ -515,6 +517,7 @@ window_t * get_desktop_bar() {
 void set_window_fillcolor(window_t * w, uint32_t color) {
     w->fill_color = color;
 }
+
 
 
 /*
@@ -645,6 +648,88 @@ void move_window(window_t * w, int x, int y) {
     window_set_focus(w);
 }
 
+/*
+ * Before creating/moving a window is done, the compositor should blend the window with what was previously
+ * in the window rectangle.
+ * The blended result of the window is written to w->blended_framebuffer, which will eventually be copied to the video memory
+ * Note, when the window is moved to somewhere else, the blending should be calculated based on w->framebuffer instead of the blended ones
+ * However, if we're to calculate window A over B, we should use B->blended_framebuffer instead of B->framebuffer
+ * */
+void blend_windows(window_t * w) {
+    if(w->type == WINDOW_SUPER) {
+        memcpy(w->blended_framebuffer, w->frame_buffer, w->width * w->height * 4);
+        return;
+    }
+    rect_t curr_rect;
+    point_t p = get_canonical_coordinates(w);
+    int oldx = p.x;
+    int oldy = p.y;
+    int oldw = w->width;
+    int oldh = w->height;
+
+    // Step 1: Find all rectangles that are involved (just the rectangle of w in this case)
+    rect_t w_rect = rect_create(oldx, oldy, oldw, oldh);
+    // Step2: Find all windows that intersect with the rectangle (for each window, determine the intersecting portion, which is also a rectangle)
+    int size = 0;
+    int new_size = 0;
+    tree2array(windows_tree, (void**)windows_array, &size);
+
+    for(int i = 0; i < size; i++) {
+        window_t * curr_w = windows_array[i];
+        if(curr_w->is_minimized) continue;
+        p = get_canonical_coordinates(curr_w);
+        curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
+        if(is_rect_overlap(w_rect, curr_rect)) {
+            curr_w->intersection_rect = find_rect_overlap(w_rect, curr_rect);
+            windows_array[new_size++] = curr_w;
+        }
+    }
+    // Step3: Sort all window. For each window, find the portions that are not covered by other more shallow windows
+    // Second part of step3 can greatly reduce latency for situation where multiple windows overlap each other, i may implement it later if necessary
+    // But minimize window now looks pretty smooth already.
+
+    // Bubble sort window list, by depth
+    for(int i = 0; i < new_size - 1; i++) {
+        for(int j = 0; j < new_size - 1; j++) {
+            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
+                window_t * swap = windows_array[j];
+                windows_array[j] = windows_array[j + 1];
+                windows_array[j + 1] = swap;
+            }
+        }
+    }
+
+    // Blend w with each of the windows, from back to front
+    //for(int i = 0; i < new_size; i++) {
+    //    if(windows_array[i]->depth > w->depth)
+    //    blend_window_rect(w, windows_array[i]);
+    //}
+    blend_window_rect(w, windows_array[0]);
+}
+
+
+void blend_window_rect(window_t * top_w, window_t * bottom_w) {
+    uint32_t top_color, bottom_color, blended_color;
+    point_t p;
+    int idx;
+    rect_t * bottom_rect = &bottom_w->intersection_rect;
+    for(int i = bottom_rect->x; i < bottom_rect->x + bottom_rect->width; i++) {
+        for(int j = bottom_rect->y; j < bottom_rect->y + bottom_rect->height; j++) {
+            top_color = get_window_pixel(top_w, i, j);
+
+            p = get_relative_coordinates(bottom_w, i, j);
+            idx = bottom_w->width * p.y + p.x;
+            bottom_color = bottom_w->blended_framebuffer[idx];
+
+            blended_color = blend_colors(top_color, bottom_color);
+            //blended_color = bottom_color;
+            //blended_color = 0x000000ff;
+            p = get_relative_coordinates(top_w, i, j);
+            idx = top_w->width * p.y + p.x;
+            top_w->blended_framebuffer[idx] = blended_color;
+        }
+    }
+}
 
 /*
  * Minimize window
@@ -883,6 +968,7 @@ uint32_t get_window_pixel(window_t * w, int x, int y) {
     return w->frame_buffer[idx];
 }
 
+
 /*
  * Is a point in the rectangle ?
  */
@@ -1002,7 +1088,7 @@ void compositor_init() {
     bitmap_t * wallpaper = bitmap_create("/wallpaper.bmp");
     bitmap_to_framebuffer(wallpaper, w->frame_buffer);
 #endif
-
+    blend_windows(w);
 #if 0
     memsetdw(w->frame_buffer, 0x00ff00ff,1024*768);
 #endif
