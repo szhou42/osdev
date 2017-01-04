@@ -9,7 +9,7 @@ uint32_t get_font_color() {
 }
 
 void set_font_color(uint32_t color) {
-    font_color = color;
+    font_color = color | 0xff000000;
 }
 
 /*

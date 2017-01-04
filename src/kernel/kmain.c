@@ -176,14 +176,16 @@ int kmain(multiboot_info_t * mb_info) {
     // Terminal
     window_t * red_w = window_create(get_super_window(), 20, 300, 750, 450, WINDOW_NORMAL, "window_black");
     window_add_headline(red_w, "black window");
-    window_add_close_button(red_w);
-    window_add_minimize_button(red_w);
+    //window_add_close_button(red_w);
+    //window_add_minimize_button(red_w);
     canvas_t canvas_red = canvas_create(red_w->width, red_w->height, red_w->frame_buffer);
+    set_font_color(VESA_COLOR_BLACK + 1);
     draw_text(&canvas_red, "Terminal", 1, 42);
     window_add_round_corner(red_w);
     blend_windows(red_w);
 
-    /*
+
+#if 1
     // File Browser
     window_t * green_w = window_create(get_super_window(), 100, 100, 400, 400, WINDOW_NORMAL, "window_classic");
     window_add_headline(green_w, "classic");
@@ -193,7 +195,7 @@ int kmain(multiboot_info_t * mb_info) {
     set_font_color(VESA_COLOR_BLACK + 1);
     draw_text(&canvas_green, "File browser", 1, 19);
     window_add_round_corner(green_w);
-
+    blend_windows(green_w);
 
     // Web browser
     window_t * blue_w =window_create(get_super_window(), 600, 100, 400, 400, WINDOW_NORMAL, "window_blue");
@@ -204,12 +206,14 @@ int kmain(multiboot_info_t * mb_info) {
     set_font_color(VESA_COLOR_BLACK + 1);
     draw_text(&canvas_blue, "Web Browser", 1, 19);
     window_add_round_corner(blue_w);
+    blend_windows(blue_w);
 
     window_t * web_button = window_create(blue_w, 30, 30, 60, 30, WINDOW_CONTROL, "window_xp");
     canvas_t canvas_button = canvas_create(web_button->width, web_button->height, web_button->frame_buffer);
     draw_text(&canvas_button, "Button", 1, 1);
-*/
+    blend_windows(web_button);
 
+#endif
 
     // Top desktop bar
     window_t * bar_w = window_create(get_super_window(), 0, 0, 1024, 25, WINDOW_DESKTOP_BAR, "desktop_bar");

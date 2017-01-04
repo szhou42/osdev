@@ -1,13 +1,12 @@
 #include <blend.h>
 
 uint32_t blend_colors(uint32_t color1, uint32_t color2) {
-    //uint32_t alpha1 = GET_ALPHA(color1);
-    uint32_t alpha1 = 200;
+    uint32_t alpha1 = GET_ALPHA(color1);
     uint32_t red1 = GET_RED(color1);
     uint32_t green1 = GET_GREEN(color1);
     uint32_t blue1 = GET_BLUE(color1);
 
-    uint32_t alpha2 = 200;
+    uint32_t alpha2 = GET_ALPHA(color2);
     uint32_t red2 = GET_RED(color2);
     uint32_t green2 = GET_GREEN(color2);
     uint32_t blue2 = GET_BLUE(color2);

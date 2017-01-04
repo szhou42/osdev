@@ -32,7 +32,7 @@ extern uint32_t fill_color;
 
 #define WINMSG_KEYBOARD 1
 
-#define TITLE_BAR_HEIGHT 21
+#define TITLE_BAR_HEIGHT 23
 
 typedef struct point {
     int x;

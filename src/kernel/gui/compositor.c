@@ -36,8 +36,10 @@ uint32_t * intermediate_framebuffer;
 /*
  * In OS X's window's title bar, each row's color increments, instead of having one color for the entire title bar
  */
-uint32_t title_bar_colors[TITLE_BAR_HEIGHT] = {0x00F3F3F3, 0x00EBEBEB, 0x00EBEBEB, 0x00E9E9E9, 0x00E7E7E7, 0x00E6E6E6, 0x00E5E5E5, 0x00E3E3E3, 0x00E2E2E2, 0x00E0E0E0, 0x00DFDFDF, 0x00DDDDDD,\
-    0x00DCDCDC, 0x00DADADA, 0x00D9D9D9, 0x00D8D8D8, 0x00D7D7D7, 0x00D5D5D5, 0x00D4D4D4, 0x00BCBCBC, 0x00E2E2E2};
+uint32_t title_bar_colors[TITLE_BAR_HEIGHT] = {0xff59584f, 0xff5f5d53, 0xff58564e, 0xff57554d, 0xff56544c, 0xff55534b, \
+                                               0xff54524a, 0xff525049, 0xff514f48, 0xff504e47, 0xff4e4c45, 0xff4e4c45, \
+                                               0xff4c4a44, 0xff4b4943, 0xff4a4842, 0xff484741, 0xff46453f, 0xff45443f, \
+                                               0xff44433e, 0xff43423d, 0xff42413c, 0xff403f3a, 0xff3f3e3a};
 
 rect_t rects[2];
 
@@ -259,7 +261,7 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
         else if(strcmp(name, "window_blue") == 0)
             memsetdw(w->frame_buffer, 0xff0000ff, width * height);
         else if(strcmp(name, "window_black") == 0)
-            memsetdw(w->frame_buffer, 0x00000001, width * height);
+            memsetdw(w->frame_buffer, 0xff300a24, width * height);
         else if(strcmp(name, "window_classic") == 0)
             memsetdw(w->frame_buffer, 0xffeeeeee, width * height);
         else if(strcmp(name, "window_xp") == 0)
@@ -349,12 +351,104 @@ void window_set_focus(window_t * w) {
  * Add round corners to window by setting some pixels transparent
  **/
 void window_add_round_corner(window_t * w) {
+    uint32_t idx, i, j, color, count, alpha;
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
-    for(int i = 0; i < 5; i++) {
-        for(int j = 0; j < 5 - i; j++) {
+
+    // Leave some pixels transparent
+    for(i = 0; i < 3; i++) {
+        for(j = 0; j < 3 - i; j++) {
             set_pixel(&canvas, 0x0, j, i);
-            set_pixel(&canvas, 0x0, w->width - 5 + i + j, i);
+            set_pixel(&canvas, 0x0, w->width - 3 + i + j, i);
         }
+    }
+
+    // Use alpha-channel to remove sharp edges at the right corner (basically draw three diagonal lines)
+    // First line, starting from i = 0, j = width - 1 - 3 (4 pixels, small alpha, big alpha, big ....., small alpha)
+    i = 0, j = w->width - 4, count = 4;
+    while(count-- > 0) {
+        idx = get_pixel_idx(&canvas, j, i);
+        color = w->frame_buffer[idx];
+        // Change alpha here, depending on count value
+        if(count == 0 || count == 3)
+            alpha = 0x88;
+        else
+            alpha = 0xee;
+        set_pixel(&canvas, SET_ALPHA(color, alpha), j, i);
+        i++;
+        j++;
+    }
+    // Second line, starting from i = 0, j = width - 1 - 4 (5 pixels, small, big....., small)
+    i = 0, j = w->width - 5, count = 5;
+    while(count-- > 0) {
+        idx = get_pixel_idx(&canvas, j, i);
+        color = w->frame_buffer[idx];
+        // Change alpha here, depending on count value
+        if(count == 0 || count == 4)
+            alpha = 0xee;
+        else
+            alpha = 0xff;
+        set_pixel(&canvas, SET_ALPHA(color, alpha), j, i);
+        i++;
+        j++;
+    }
+
+    // Third line, starting from i = 1, j = width - 1 - 4 (4 pixels, small, big...., small)
+    i = 1, j = w->width - 5, count = 4;
+    while(count-- > 0) {
+        idx = get_pixel_idx(&canvas, j, i);
+        color = w->frame_buffer[idx];
+        // Change alpha here, depending on count value
+        if(count == 0 || count == 3)
+            alpha = 0xff;
+        else
+            alpha = 0xff;
+        set_pixel(&canvas, SET_ALPHA(color, alpha), j, i);
+        i++;
+        j++;
+    }
+
+    // Do the same for left corner
+    i = 0, j = 3, count = 4;
+    while(count-- > 0) {
+        idx = get_pixel_idx(&canvas, j, i);
+        color = w->frame_buffer[idx];
+        // Change alpha here, depending on count value
+        if(count == 0 || count == 3)
+            alpha = 0x88;
+        else
+            alpha = 0xee;
+        set_pixel(&canvas, SET_ALPHA(color, alpha), j, i);
+        i++;
+        j--;
+    }
+    // Second line, starting from i = 0, j = width - 1 - 4 (5 pixels, small, big....., small)
+    i = 0, j = 4, count = 5;
+    while(count-- > 0) {
+        idx = get_pixel_idx(&canvas, j, i);
+        color = w->frame_buffer[idx];
+        // Change alpha here, depending on count value
+        if(count == 0 || count == 4)
+            alpha = 0xee;
+        else
+            alpha = 0xff;
+        set_pixel(&canvas, SET_ALPHA(color, alpha), j, i);
+        i++;
+        j--;
+    }
+
+    // Third line, starting from i = 1, j = width - 1 - 4 (4 pixels, small, big...., small)
+    i = 1, j = 4, count = 4;
+    while(count-- > 0) {
+        idx = get_pixel_idx(&canvas, j, i);
+        color = w->frame_buffer[idx];
+        // Change alpha here, depending on count value
+        if(count == 0 || count == 3)
+            alpha = 0xff;
+        else
+            alpha = 0xff;
+        set_pixel(&canvas, SET_ALPHA(color, alpha), j, i);
+        i++;
+        j--;
     }
 }
 
@@ -380,7 +474,7 @@ void window_add_headline(window_t * w, char * headline) {
  * Draw a close button for headline (size is 18*18)
  * */
 void window_add_close_button(window_t * w) {
-    set_fill_color(0x00ff0000);
+    set_fill_color(0xffff0000);
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
     draw_rect(&canvas, 0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
 }
@@ -389,7 +483,7 @@ void window_add_close_button(window_t * w) {
  * Draw a minimize button for headline
  * */
 void window_add_minimize_button(window_t * w) {
-    set_fill_color(0x00ffff00);
+    set_fill_color(0xffffff00);
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
     draw_rect(&canvas, TITLE_BAR_HEIGHT, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
 }
@@ -632,6 +726,7 @@ void move_window(window_t * w, int x, int y) {
     }
 
     // Step4: Draw window w on new position
+    //blend_windows(w);
     window_display(w, NULL, 0);
     draw_mouse();
 
@@ -700,11 +795,10 @@ void blend_windows(window_t * w) {
     }
 
     // Blend w with each of the windows, from back to front
-    //for(int i = 0; i < new_size; i++) {
-    //    if(windows_array[i]->depth > w->depth)
-    //    blend_window_rect(w, windows_array[i]);
-    //}
-    blend_window_rect(w, windows_array[0]);
+    for(int i = 0; i < new_size; i++) {
+        if(windows_array[i]->depth > w->depth)
+            blend_window_rect(w, windows_array[i]);
+    }
 }
 
 
@@ -724,6 +818,7 @@ void blend_window_rect(window_t * top_w, window_t * bottom_w) {
             blended_color = blend_colors(top_color, bottom_color);
             //blended_color = bottom_color;
             //blended_color = 0x000000ff;
+            //blended_color = top_color;
             p = get_relative_coordinates(top_w, i, j);
             idx = top_w->width * p.y + p.x;
             top_w->blended_framebuffer[idx] = blended_color;
