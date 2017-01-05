@@ -154,7 +154,11 @@ window_t * get_desktop_bar();
 
 void blend_windows(window_t * w);
 
+void blend_title_bar(window_t * w, int left);
+
 void blend_window_rect(window_t * top_w, window_t * bottom_w);
+
+void maximize_window(window_t * w);
 
 void minimize_window(window_t * w);
 
@@ -197,6 +201,8 @@ point_t get_canonical_coordinates(window_t * w);
 window_t * alertbox_create(window_t * parent, int x, int y, char * title, char * text);
 
 point_t get_relative_coordinates(window_t * w, int x, int y);
+
+point_t get_mouse_position_before_move();
 
 int is_window_overlap(window_t * w1, window_t * w2);
 

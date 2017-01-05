@@ -6,20 +6,24 @@
 
 bitmap_t * bitmap_create(char * filename) {
     bitmap_t * ret = kmalloc(sizeof(bitmap_t));
+    qemu_printf("Opening %s\n", filename);
     vfs_node_t * file = file_open(filename, 0);
     if(!file) {
+        qemu_printf("Fail to open %s\n", filename);
         return NULL;
     }
+
     uint32_t size = vfs_get_file_size(file);
     void * buf = kmalloc(size);
+    qemu_printf("Reading content of %s\n", filename);
     vfs_read(file, 0, size, buf);
 
 
     // Parse the bitmap
     bmp_fileheader_t * h = buf;
     unsigned int offset = h->bfOffBits;
-    printf("bitmap size: %u\n", h->bfSize);
-    printf("bitmap offset: %u\n", offset);
+    qemu_printf("bitmap size: %u\n", h->bfSize);
+    qemu_printf("bitmap offset: %u\n", offset);
 
     bmp_infoheader_t * info = buf + sizeof(bmp_fileheader_t);
 
@@ -29,9 +33,10 @@ bitmap_t * bitmap_create(char * filename) {
     ret->buf = buf;
     ret->total_size= size;
     ret->bpp = info->biBitCount;
-    printf("bitmap is %u x %u\n", ret->width, ret->height);
-    printf("file is here: %p\n", buf);
-    printf("image is here %p\n", ret->image_bytes);
+    qemu_printf("bitmap is %u x %u\n", ret->width, ret->height);
+    qemu_printf("file is here: %p\n", buf);
+    qemu_printf("image is here %p\n", ret->image_bytes);
+    vfs_close(file);
     return ret;
 }
 

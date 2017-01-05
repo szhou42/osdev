@@ -148,7 +148,7 @@ void mouse_handler(register_t * regs)
             msg.sub_type = WINMSG_MOUSE_MOVE;
             msg.change_x = mouse_byte[1];
             msg.change_y = -mouse_byte[2];
-            qemu_printf("x change = %d y change = %d\n", msg.change_x, msg.change_y);
+            //qemu_printf("x change = %d y change = %d\n", msg.change_x, msg.change_y);
             mouse_cycle = 0;
             break;
     }
@@ -198,6 +198,18 @@ uint8_t mouse_read()
 void draw_mouse() {
     set_fill_color(VESA_COLOR_BLUE);
     draw_rect_clip_pixels(get_screen_canvas(), &current_mouse_region, CURSOR_WIDTH);
+#if 0
+    if(is_moving()) {
+        point_t p = get_mouse_position_before_move();
+        qemu_printf("Drawing mouse at (%d, %d)\n", p.x, p.y);
+        current_mouse_region.r.x = p.x;
+        current_mouse_region.r.x = p.y;
+        draw_rect_clip_pixels(get_screen_canvas(), &current_mouse_region, CURSOR_WIDTH);
+    }
+    else {
+        draw_rect_clip_pixels(get_screen_canvas(), &current_mouse_region, CURSOR_WIDTH);
+    }
+#endif
 }
 
 /*

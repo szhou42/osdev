@@ -189,8 +189,12 @@ int kmain(multiboot_info_t * mb_info) {
     // File Browser
     window_t * green_w = window_create(get_super_window(), 100, 100, 400, 400, WINDOW_NORMAL, "window_classic");
     window_add_headline(green_w, "classic");
+    qemu_printf("Adding close buttons\n");
     window_add_close_button(green_w);
+    qemu_printf("Adding minimize buttons\n");
     window_add_minimize_button(green_w);
+    qemu_printf("Adding maximize buttons\n");
+    window_add_maximize_button(green_w);
     canvas_t canvas_green = canvas_create(green_w->width, green_w->height, green_w->frame_buffer);
     set_font_color(VESA_COLOR_BLACK + 1);
     draw_text(&canvas_green, "File browser", 1, 19);

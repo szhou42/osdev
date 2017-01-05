@@ -37,9 +37,9 @@ uint32_t * intermediate_framebuffer;
  * In OS X's window's title bar, each row's color increments, instead of having one color for the entire title bar
  */
 uint32_t title_bar_colors[TITLE_BAR_HEIGHT] = {0xff59584f, 0xff5f5d53, 0xff58564e, 0xff57554d, 0xff56544c, 0xff55534b, \
-                                               0xff54524a, 0xff525049, 0xff514f48, 0xff504e47, 0xff4e4c45, 0xff4e4c45, \
-                                               0xff4c4a44, 0xff4b4943, 0xff4a4842, 0xff484741, 0xff46453f, 0xff45443f, \
-                                               0xff44433e, 0xff43423d, 0xff42413c, 0xff403f3a, 0xff3f3e3a};
+    0xff54524a, 0xff525049, 0xff514f48, 0xff504e47, 0xff4e4c45, 0xff4e4c45, \
+        0xff4c4a44, 0xff4b4943, 0xff4a4842, 0xff484741, 0xff46453f, 0xff45443f, \
+        0xff44433e, 0xff43423d, 0xff42413c, 0xff403f3a, 0xff3f3e3a};
 
 rect_t rects[2];
 
@@ -48,6 +48,12 @@ int right_button_held_down;
 
 int moving = 0;
 window_t * moving_window;
+point_t last_mouse_position;
+
+int close_highlight;
+int minimize_highlight;
+int maximize_highlight;
+
 
 #define DEBUG_GUI 0
 
@@ -94,6 +100,8 @@ void window_message_handler(winmsg_t * msg) {
     int cursor_y = msg->cursor_y - p.y;
     //qemu_printf("%s(d = %d): ", w->name, w->depth);
     rect_t r = rect_create(0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
+    rect_t r2 = rect_create(0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
+    rect_t r3 = rect_create(0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
     switch(msg->msg_type) {
         case WINMSG_MOUSE:
             if(msg->sub_type == WINMSG_MOUSE_MOVE) {
@@ -104,14 +112,152 @@ void window_message_handler(winmsg_t * msg) {
                     r.width = w->width - r.x;
                     if(is_point_in_rect(cursor_x, cursor_y, &r) || moving) {
                         if(moving) {
-                            qemu_printf("%s is moving\n", moving_window->name);
                             move_window(moving_window, moving_window->x + msg->change_x, moving_window->y + msg->change_y);
                         }
                         else {
-                            qemu_printf("%s is moving\n", w->name);
+                            qemu_printf("%s Starts moving, cursor at (%d, %d), (%d, %d)\n", w->name, cursor_x, cursor_y, msg->cursor_x, msg->cursor_y);
+                            last_mouse_position.x = cursor_x;
+                            last_mouse_position.y = cursor_y;
                             move_window(w, w->x + msg->change_x, w->y + msg->change_y);
                         }
 
+                    }
+                }
+                else {
+                    // If w is desktop bar, return
+                    if(w->type != WINDOW_NORMAL) return;
+                    qemu_printf("mouse over [%s]\n", w->name);
+                    // Set button highlights
+                    // Close button
+                    r.x = 7;
+                    r.height= 17;
+                    r2.x = 26;
+                    r2.y = 3;
+                    r3.x = 45;
+                    r3.y = 3;
+                    rect_t temp_rect;
+                    int point_at_close = 0;
+                    int point_at_minimize = 0;
+                    int point_at_maximize = 0;
+                    if(is_point_in_rect(cursor_x, cursor_y, &r)) {
+                        bitmap_t * close_bmp = bitmap_create("/red_highlight.bmp");
+                        canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
+                        rect_region_t close_region;
+                        close_region.r.x = 7; // (7)
+                        close_region.r.y = 3;
+                        close_region.r.width = close_bmp->width;
+                        close_region.r.height = close_bmp->height;
+                        close_region.region = (void*)close_bmp->image_bytes;
+                        qemu_printf("draw pixels\n");
+                        draw_rect_pixels(&canvas, &close_region);
+                        temp_rect.x = p.x + close_region.r.x;
+                        temp_rect.y = p.y + close_region.r.y;
+                        temp_rect.width = close_region.r.width;
+                        temp_rect.height = close_region.r.height;
+                        window_display(w, &temp_rect, 1);
+                        video_memory_update(&temp_rect, 1);
+                        close_highlight = 1;
+                        point_at_close = 1;
+                    }
+                    // Minimize button
+                    if(is_point_in_rect(cursor_x, cursor_y, &r2)) {
+                        canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
+                        // Load and draw minimize button
+                        bitmap_t * minimize_bmp = bitmap_create("/minimize_highlight.bmp");
+                        rect_region_t minimize_region;
+                        minimize_region.r.x = 7 + 17 + 2; // (26)
+                        minimize_region.r.y = 3;
+                        minimize_region.r.width = minimize_bmp->width;
+                        minimize_region.r.height = minimize_bmp->height;
+                        minimize_region.region = (void*)minimize_bmp->image_bytes;
+                        draw_rect_pixels(&canvas, &minimize_region);
+                        temp_rect.x = p.x + minimize_region.r.x;
+                        temp_rect.y = p.y + minimize_region.r.y;
+                        temp_rect.width = minimize_region.r.width;
+                        temp_rect.height = minimize_region.r.height;
+                        window_display(w, &temp_rect, 1);
+                        video_memory_update(&temp_rect, 1);
+                        minimize_highlight = 1;
+                        point_at_minimize = 1;
+                    }
+                    if(is_point_in_rect(cursor_x, cursor_y, &r3)) {
+                        canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
+                        // Load and draw maximize button
+                        bitmap_t * maximize_bmp = bitmap_create("/maximize_highlight.bmp");
+                        rect_region_t maximize_region;
+                        maximize_region.r.x = 7 + 17 + 2 + 17 + 2; // (45)
+                        maximize_region.r.y = 3;
+                        maximize_region.r.width = maximize_bmp->width;
+                        maximize_region.r.height = maximize_bmp->height;
+                        maximize_region.region = (void*)maximize_bmp->image_bytes;
+                        draw_rect_pixels(&canvas, &maximize_region);
+                        temp_rect.x = p.x + maximize_region.r.x;
+                        temp_rect.y = p.y + maximize_region.r.y;
+                        temp_rect.width = maximize_region.r.width;
+                        temp_rect.height = maximize_region.r.height;
+                        window_display(w, &temp_rect, 1);
+                        video_memory_update(&temp_rect, 1);
+                        maximize_highlight = 1;
+                        point_at_maximize = 1;
+                    }
+                    // Cancel highlight, if highlight == 1 && point is not in rect
+                    if(close_highlight && !point_at_close) {
+                        bitmap_t * close_bmp = bitmap_create("/normal_close.bmp");
+                        canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
+                        rect_region_t close_region;
+                        close_region.r.x = 7; // (7)
+                        close_region.r.y = 3;
+                        close_region.r.width = close_bmp->width;
+                        close_region.r.height = close_bmp->height;
+                        close_region.region = (void*)close_bmp->image_bytes;
+                        qemu_printf("draw pixels\n");
+                        draw_rect_pixels(&canvas, &close_region);
+                        temp_rect.x = p.x + close_region.r.x;
+                        temp_rect.y = p.y + close_region.r.y;
+                        temp_rect.width = close_region.r.width;
+                        temp_rect.height = close_region.r.height;
+                        window_display(w, &temp_rect, 1);
+                        video_memory_update(&temp_rect, 1);
+                        close_highlight = 0;
+                    }
+                    if(minimize_highlight && !point_at_minimize) {
+                        canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
+                        // Load and draw minimize button
+                        bitmap_t * minimize_bmp = bitmap_create("/normal_minimize.bmp");
+                        rect_region_t minimize_region;
+                        minimize_region.r.x = 7 + 17 + 2; // (26)
+                        minimize_region.r.y = 3;
+                        minimize_region.r.width = minimize_bmp->width;
+                        minimize_region.r.height = minimize_bmp->height;
+                        minimize_region.region = (void*)minimize_bmp->image_bytes;
+                        draw_rect_pixels(&canvas, &minimize_region);
+                        temp_rect.x = p.x + minimize_region.r.x;
+                        temp_rect.y = p.y + minimize_region.r.y;
+                        temp_rect.width = minimize_region.r.width;
+                        temp_rect.height = minimize_region.r.height;
+                        window_display(w, &temp_rect, 1);
+                        video_memory_update(&temp_rect, 1);
+                        minimize_highlight = 0;
+
+                    }
+                    if(maximize_highlight && !point_at_maximize) {
+                        canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
+                        // Load and draw maximize button
+                        bitmap_t * maximize_bmp = bitmap_create("/normal_maximize.bmp");
+                        rect_region_t maximize_region;
+                        maximize_region.r.x = 7 + 17 + 2 + 17 + 2; // (45)
+                        maximize_region.r.y = 3;
+                        maximize_region.r.width = maximize_bmp->width;
+                        maximize_region.r.height = maximize_bmp->height;
+                        maximize_region.region = (void*)maximize_bmp->image_bytes;
+                        draw_rect_pixels(&canvas, &maximize_region);
+                        temp_rect.x = p.x + maximize_region.r.x;
+                        temp_rect.y = p.y + maximize_region.r.y;
+                        temp_rect.width = maximize_region.r.width;
+                        temp_rect.height = maximize_region.r.height;
+                        window_display(w, &temp_rect, 1);
+                        video_memory_update(&temp_rect, 1);
+                        maximize_highlight = 0;
                     }
                 }
             }
@@ -134,16 +280,27 @@ void window_message_handler(winmsg_t * msg) {
                 }
                 if((w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT) && strcmp(w->name, "desktop_bar") != 0){
                     // Close button
+                    r.x = 7;
+                    r.y = 3;
+                    r.width = 17;
+                    r.height= 17;
                     if(w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT) {
                         if(is_point_in_rect(cursor_x, cursor_y, &r)) {
                             close_window(msg->window);
                         }
                     }
                     // Minimize button
-                    r.x = TITLE_BAR_HEIGHT;
+                    r.x = 26;
+                    r.y = 3;
                     if(is_point_in_rect(cursor_x, cursor_y, &r)) {
                         minimize_window(msg->window);
                     }
+                    r.x = 45;
+                    r.y = 3;
+                    if(is_point_in_rect(cursor_x, cursor_y, &r)) {
+                        maximize_window(msg->window);
+                    }
+
                 }
                 else if(w->type == WINDOW_CONTROL) {
                     // Call button handler
@@ -476,13 +633,16 @@ void window_add_headline(window_t * w, char * headline) {
 void window_add_close_button(window_t * w) {
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
     // Load and draw close button
+    qemu_printf("create bitmap\n");
     bitmap_t * close_bmp = bitmap_create("/normal_close.bmp");
+    qemu_printf("create bitmap done\n");
     rect_region_t close_region;
-    close_region.r.x = 7;
+    close_region.r.x = 7; // (7)
     close_region.r.y = 3;
     close_region.r.width = close_bmp->width;
     close_region.r.height = close_bmp->height;
     close_region.region = (void*)close_bmp->image_bytes;
+    qemu_printf("draw pixels\n");
     draw_rect_pixels(&canvas, &close_region);
 }
 
@@ -494,7 +654,7 @@ void window_add_minimize_button(window_t * w) {
     // Load and draw minimize button
     bitmap_t * minimize_bmp = bitmap_create("/normal_minimize.bmp");
     rect_region_t minimize_region;
-    minimize_region.r.x = 7 + 17 + 2;
+    minimize_region.r.x = 7 + 17 + 2; // (26)
     minimize_region.r.y = 3;
     minimize_region.r.width = minimize_bmp->width;
     minimize_region.r.height = minimize_bmp->height;
@@ -510,7 +670,7 @@ void window_add_maximize_button(window_t * w) {
     // Load and draw maximize button
     bitmap_t * maximize_bmp = bitmap_create("/normal_maximize.bmp");
     rect_region_t maximize_region;
-    maximize_region.r.x = 7 + 17 + 2 + 17 + 2;
+    maximize_region.r.x = 7 + 17 + 2 + 17 + 2; // (45)
     maximize_region.r.y = 3;
     maximize_region.r.width = maximize_bmp->width;
     maximize_region.r.height = maximize_bmp->height;
@@ -757,6 +917,8 @@ void move_window(window_t * w, int x, int y) {
 
     // Step4: Draw window w on new position
     //blend_windows(w);
+    blend_title_bar(w, 0);
+    blend_title_bar(w, 1);
     window_display(w, NULL, 0);
     draw_mouse();
 
@@ -769,8 +931,65 @@ void move_window(window_t * w, int x, int y) {
     }
     //qemu_printf("------\n");
     video_memory_update(dirty_rects, rect_size);
-    qemu_printf("Move finish\n");
     window_set_focus(w);
+}
+
+/*
+ * Blending entire window is expensive, instead,we only blend the title bar, especially the round corners
+ * */
+void blend_title_bar(window_t * w, int left) {
+    if(w->type == WINDOW_SUPER) {
+        memcpy(w->blended_framebuffer, w->frame_buffer, w->width * w->height * 4);
+        return;
+    }
+    rect_t curr_rect;
+    point_t p = get_canonical_coordinates(w);
+    int oldx = p.x;
+    int oldy = p.y;
+    int oldw = w->width;
+
+    // Step 1: Find all rectangles that are involved (just the rectangle of w in this case)
+    rect_t w_rect;
+    if(left)
+        w_rect = rect_create(oldx, oldy, 10, TITLE_BAR_HEIGHT);
+    else
+        w_rect = rect_create(oldx + oldw - 10, oldy, 10, TITLE_BAR_HEIGHT);
+
+    // Step2: Find all windows that intersect with the rectangle (for each window, determine the intersecting portion, which is also a rectangle)
+    int size = 0;
+    int new_size = 0;
+    tree2array(windows_tree, (void**)windows_array, &size);
+
+    for(int i = 0; i < size; i++) {
+        window_t * curr_w = windows_array[i];
+        if(curr_w->is_minimized) continue;
+        p = get_canonical_coordinates(curr_w);
+        curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
+        if(is_rect_overlap(w_rect, curr_rect)) {
+            curr_w->intersection_rect = find_rect_overlap(w_rect, curr_rect);
+            windows_array[new_size++] = curr_w;
+        }
+    }
+    // Step3: Sort all window. For each window, find the portions that are not covered by other more shallow windows
+    // Second part of step3 can greatly reduce latency for situation where multiple windows overlap each other, i may implement it later if necessary
+    // But minimize window now looks pretty smooth already.
+
+    // Bubble sort window list, by depth
+    for(int i = 0; i < new_size - 1; i++) {
+        for(int j = 0; j < new_size - 1; j++) {
+            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
+                window_t * swap = windows_array[j];
+                windows_array[j] = windows_array[j + 1];
+                windows_array[j + 1] = swap;
+            }
+        }
+    }
+
+    // Blend w with each of the windows, from back to front
+    for(int i = 0; i < new_size; i++) {
+        if(windows_array[i]->depth > w->depth)
+            blend_window_rect(w, windows_array[i]);
+    }
 }
 
 /*
@@ -846,9 +1065,6 @@ void blend_window_rect(window_t * top_w, window_t * bottom_w) {
             bottom_color = bottom_w->blended_framebuffer[idx];
 
             blended_color = blend_colors(top_color, bottom_color);
-            //blended_color = bottom_color;
-            //blended_color = 0x000000ff;
-            //blended_color = top_color;
             p = get_relative_coordinates(top_w, i, j);
             idx = top_w->width * p.y + p.x;
             top_w->blended_framebuffer[idx] = blended_color;
@@ -856,6 +1072,9 @@ void blend_window_rect(window_t * top_w, window_t * bottom_w) {
     }
 }
 
+void maximize_window(window_t * w) {
+    qemu_printf("Hi, this is not implemented yet\n");
+}
 /*
  * Minimize window
  */
@@ -1151,6 +1370,13 @@ point_t get_canonical_coordinates(window_t * w) {
     return p;
 }
 
+point_t get_mouse_position_before_move() {
+    // First convert to canonical coordinates and then return
+    point_t p = get_canonical_coordinates(moving_window);
+    p.x = p.x + last_mouse_position.x;
+    p.y = p.y + last_mouse_position.y;
+    return p;
+}
 /*
  * Is two window overlap ?
  */
