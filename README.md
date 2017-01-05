@@ -100,4 +100,4 @@ And then choose one of the following simulator to boot simpleos. QEMU is more re
 &#160; &#160; &#160; &#160;6 HTTP                   []  
 
 # Screenshots  
-![Alt text](/os_screenshots/ss13.png?raw=true "ss13")
+![Alt text](/os_screenshots/ss15.png?raw=true "ss15")

@@ -207,6 +207,8 @@ vfs_node_t * ext2_finddir(vfs_node_t * parent, char *name) {
     ext2_fs_t * ext2fs = parent->device;
     inode_t * p_inode = kmalloc(sizeof(inode_t));
     read_inode_metadata(ext2fs, p_inode, parent->inode_num);
+    uint32_t expected_size;
+    uint32_t real_size;
     uint32_t curr_offset = 0;
     uint32_t block_offset = 0;
     uint32_t in_block_offset = 0;
@@ -227,8 +229,11 @@ vfs_node_t * ext2_finddir(vfs_node_t * parent, char *name) {
              read_inode_metadata(ext2fs, inode, curr_dir->inode);
              return vfsnode_from_direntry(ext2fs, curr_dir, inode);
         }
-        uint32_t expected_size = ((sizeof(direntry_t) + curr_dir->name_len) & 0xfffffffc) + 0x4;
-        uint32_t real_size = curr_dir->size;
+        if(((sizeof(direntry_t) + curr_dir->name_len) & 0x00000003) != 0)
+            expected_size = ((sizeof(direntry_t) + curr_dir->name_len) & 0xfffffffc) + 0x4;
+        else
+            expected_size = ((sizeof(direntry_t) + curr_dir->name_len) & 0xfffffffc);
+        real_size = curr_dir->size;
         if(real_size != expected_size) {
             break;
         }
@@ -242,13 +247,11 @@ vfs_node_t * ext2_finddir(vfs_node_t * parent, char *name) {
  * Create an entry under certain dir
  * The parent should always be a directory
  *
- * OK, How are we gonna do this?
  * For a directory inode, its data is simply a bunch of directory entry that tells you where the sub-directories and files are
  * So, just add an entry.
  * Each directory entry could have different length, so we could think of it as a memory pool with memory chunks of different size in it, and manage it like what we did with malloc
  * But instead, I don't care about wasting a few hundred bytes because... this is just a toy os
  * So what we're going to do is just append an entry in the end
- * But even if we're avoiding complicated method, I believe my current impl still has many bugs for lage number of entries, but let's just make it work for now
  * */
 void ext2_create_entry(vfs_node_t * parent, char * entry_name, uint32_t entry_inode) {
     ext2_fs_t * ext2fs = parent->device;

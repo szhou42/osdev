@@ -474,18 +474,48 @@ void window_add_headline(window_t * w, char * headline) {
  * Draw a close button for headline (size is 18*18)
  * */
 void window_add_close_button(window_t * w) {
-    set_fill_color(0xffff0000);
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
-    draw_rect(&canvas, 0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
+    // Load and draw close button
+    bitmap_t * close_bmp = bitmap_create("/normal_close.bmp");
+    rect_region_t close_region;
+    close_region.r.x = 7;
+    close_region.r.y = 3;
+    close_region.r.width = close_bmp->width;
+    close_region.r.height = close_bmp->height;
+    close_region.region = (void*)close_bmp->image_bytes;
+    draw_rect_pixels(&canvas, &close_region);
 }
 
 /*
  * Draw a minimize button for headline
  * */
 void window_add_minimize_button(window_t * w) {
-    set_fill_color(0xffffff00);
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
-    draw_rect(&canvas, TITLE_BAR_HEIGHT, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
+    // Load and draw minimize button
+    bitmap_t * minimize_bmp = bitmap_create("/normal_minimize.bmp");
+    rect_region_t minimize_region;
+    minimize_region.r.x = 7 + 17 + 2;
+    minimize_region.r.y = 3;
+    minimize_region.r.width = minimize_bmp->width;
+    minimize_region.r.height = minimize_bmp->height;
+    minimize_region.region = (void*)minimize_bmp->image_bytes;
+    draw_rect_pixels(&canvas, &minimize_region);
+}
+
+/*
+ * Draw a maximize button for headline
+ * */
+void window_add_maximize_button(window_t * w) {
+    canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
+    // Load and draw maximize button
+    bitmap_t * maximize_bmp = bitmap_create("/normal_maximize.bmp");
+    rect_region_t maximize_region;
+    maximize_region.r.x = 7 + 17 + 2 + 17 + 2;
+    maximize_region.r.y = 3;
+    maximize_region.r.width = maximize_bmp->width;
+    maximize_region.r.height = maximize_bmp->height;
+    maximize_region.region = (void*)maximize_bmp->image_bytes;
+    draw_rect_pixels(&canvas, &maximize_region);
 }
 
 
