@@ -131,27 +131,23 @@ void window_message_handler(winmsg_t * msg) {
                     if((point_at_close = is_point_in_rect(cursor_x, cursor_y, &r))) {
                         draw_rect_pixels(&canvas, &highlight_close_region);
                         get_device_rect(&temp_rect, &highlight_close_region.r, &p);
-                        window_display(w, &temp_rect, 1);
-                        draw_mouse();
-                        video_memory_update(&temp_rect, 1);
                         close_highlight = 1;
                     }
                     // Minimize button
                     if((point_at_minimize = is_point_in_rect(cursor_x, cursor_y, &r2))) {
                         draw_rect_pixels(&canvas, &highlight_minimize_region);
                         get_device_rect(&temp_rect, &highlight_minimize_region.r, &p);
-                        window_display(w, &temp_rect, 1);
-                        draw_mouse();
-                        video_memory_update(&temp_rect, 1);
                         minimize_highlight = 1;
                     }
                     if((point_at_maximize = is_point_in_rect(cursor_x, cursor_y, &r3))) {
                         draw_rect_pixels(&canvas, &highlight_maximize_region);
                         get_device_rect(&temp_rect, &highlight_maximize_region.r, &p);
+                        maximize_highlight = 1;
+                    }
+                    if(point_at_close || point_at_minimize || point_at_maximize) {
                         window_display(w, &temp_rect, 1);
                         draw_mouse();
                         video_memory_update(&temp_rect, 1);
-                        maximize_highlight = 1;
                     }
                     // Cancel highlight, if highlight == 1 && point is not in rect
                     if(close_highlight && !point_at_close) {
@@ -198,24 +194,16 @@ void window_message_handler(winmsg_t * msg) {
                 }
                 if((w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT) && strcmp(w->name, "desktop_bar") != 0){
                     // Close button
-                    r.x = 7;
-                    r.y = 3;
-                    r.width = 17;
-                    r.height= 17;
                     if(w->type == WINDOW_NORMAL || w->type == WINDOW_ALERT) {
-                        if(is_point_in_rect(cursor_x, cursor_y, &r)) {
+                        if(is_point_in_rect(cursor_x, cursor_y, &close_region.r)) {
                             close_window(msg->window);
                         }
                     }
                     // Minimize button
-                    r.x = 26;
-                    r.y = 3;
-                    if(is_point_in_rect(cursor_x, cursor_y, &r)) {
+                    if(is_point_in_rect(cursor_x, cursor_y, &minimize_region.r)) {
                         minimize_window(msg->window);
                     }
-                    r.x = 45;
-                    r.y = 3;
-                    if(is_point_in_rect(cursor_x, cursor_y, &r)) {
+                    if(is_point_in_rect(cursor_x, cursor_y, &maximize_region.r)) {
                         maximize_window(msg->window);
                     }
 
@@ -310,9 +298,6 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
             memsetdw(w->frame_buffer, 0xffDCE8EC , width * height);
 
     }
-    w->fill_color = VESA_COLOR_WHITE;
-    w->border_color= VESA_COLOR_BLACK;
-
     // Add it to the winodw tree
     if(type == WINDOW_SUPER)
         subroot = NULL;
@@ -322,10 +307,8 @@ window_t *  window_create(window_t * parent, int x, int y, int width, int height
         // Every window except the super window should have a parent
         subroot = parent->self;
     }
-
     // Keep a reference to the treenode in window structure
     w->self = tree_insert(windows_tree, subroot, w);
-
     // Loop through all other windows in the tree, if overlap, add them to list w->under_windows
     add_under_windows(w);
     w->depth = 0;
@@ -380,109 +363,13 @@ void window_set_focus(window_t * w) {
     focus_w = w;
 }
 
+
 /*
  * Add round corners to window by setting some pixels transparent
  **/
 void window_add_round_corner(window_t * w) {
-    uint32_t idx, i, j, color, count, alpha;
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
-
-    // Leave some pixels transparent
-    for(i = 0; i < 3; i++) {
-        for(j = 0; j < 3 - i; j++) {
-            set_pixel(&canvas, 0x0, j, i);
-            set_pixel(&canvas, 0x0, w->width - 3 + i + j, i);
-        }
-    }
-
-    // Use alpha-channel to remove sharp edges at the right corner (basically draw three diagonal lines)
-    // First line, starting from i = 0, j = width - 1 - 3 (4 pixels, small alpha, big alpha, big ....., small alpha)
-    i = 0, j = w->width - 4, count = 4;
-    while(count-- > 0) {
-        idx = get_pixel_idx(&canvas, j, i);
-        color = w->frame_buffer[idx];
-        // Change alpha here, depending on count value
-        if(count == 0 || count == 3)
-            alpha = 0x88;
-        else
-            alpha = 0xee;
-        set_pixel(&canvas, SET_ALPHA(color, alpha), j, i);
-        i++;
-        j++;
-    }
-    // Second line, starting from i = 0, j = width - 1 - 4 (5 pixels, small, big....., small)
-    i = 0, j = w->width - 5, count = 5;
-    while(count-- > 0) {
-        idx = get_pixel_idx(&canvas, j, i);
-        color = w->frame_buffer[idx];
-        // Change alpha here, depending on count value
-        if(count == 0 || count == 4)
-            alpha = 0xee;
-        else
-            alpha = 0xff;
-        set_pixel(&canvas, SET_ALPHA(color, alpha), j, i);
-        i++;
-        j++;
-    }
-
-    // Third line, starting from i = 1, j = width - 1 - 4 (4 pixels, small, big...., small)
-    i = 1, j = w->width - 5, count = 4;
-    while(count-- > 0) {
-        idx = get_pixel_idx(&canvas, j, i);
-        color = w->frame_buffer[idx];
-        // Change alpha here, depending on count value
-        if(count == 0 || count == 3)
-            alpha = 0xff;
-        else
-            alpha = 0xff;
-        set_pixel(&canvas, SET_ALPHA(color, alpha), j, i);
-        i++;
-        j++;
-    }
-
-    // Do the same for left corner
-    i = 0, j = 3, count = 4;
-    while(count-- > 0) {
-        idx = get_pixel_idx(&canvas, j, i);
-        color = w->frame_buffer[idx];
-        // Change alpha here, depending on count value
-        if(count == 0 || count == 3)
-            alpha = 0x88;
-        else
-            alpha = 0xee;
-        set_pixel(&canvas, SET_ALPHA(color, alpha), j, i);
-        i++;
-        j--;
-    }
-    // Second line, starting from i = 0, j = width - 1 - 4 (5 pixels, small, big....., small)
-    i = 0, j = 4, count = 5;
-    while(count-- > 0) {
-        idx = get_pixel_idx(&canvas, j, i);
-        color = w->frame_buffer[idx];
-        // Change alpha here, depending on count value
-        if(count == 0 || count == 4)
-            alpha = 0xee;
-        else
-            alpha = 0xff;
-        set_pixel(&canvas, SET_ALPHA(color, alpha), j, i);
-        i++;
-        j--;
-    }
-
-    // Third line, starting from i = 1, j = width - 1 - 4 (4 pixels, small, big...., small)
-    i = 1, j = 4, count = 4;
-    while(count-- > 0) {
-        idx = get_pixel_idx(&canvas, j, i);
-        color = w->frame_buffer[idx];
-        // Change alpha here, depending on count value
-        if(count == 0 || count == 3)
-            alpha = 0xff;
-        else
-            alpha = 0xff;
-        set_pixel(&canvas, SET_ALPHA(color, alpha), j, i);
-        i++;
-        j--;
-    }
+    round_corner_effect(&canvas);
 }
 
 /*
@@ -636,6 +523,8 @@ window_t * get_desktop_bar() {
  * Move window to (x,y)
  */
 void move_window(window_t * w, int x, int y) {
+    int oldx = w->x, oldy = w->y, oldw = w->width, oldh = w->height, rect_size = 0;
+    rect_t dirty_rects[3];
     if(moving && moving_window != w) {
         return;
     }
@@ -643,7 +532,6 @@ void move_window(window_t * w, int x, int y) {
     moving_window = w;
     if(w->type == WINDOW_SUPER || w->type == WINDOW_DESKTOP_BAR)
         return;
-    rect_t dirty_rects[3];
     // Do some input check here, make sure the window can not be move outside of the screen
     if(x < 0)
         x = 0;
@@ -655,11 +543,6 @@ void move_window(window_t * w, int x, int y) {
         y = canvas.height - w->height;
 
     rect_t curr_rect;
-    int oldx = w->x;
-    int oldy = w->y;
-    int oldw = w->width;
-    int oldh = w->height;
-    int rect_size = 0;
     w->x = x;
     w->y = y;
     point_t p;
@@ -719,7 +602,6 @@ void move_window(window_t * w, int x, int y) {
         new_size++;
     }
 
-
     // Step3: Sort windows by depth and draw window intersection
     for(int k = 0; k < new_size - 1; k++) {
         for(int p = 0; p < new_size - 1; p++) {
@@ -732,9 +614,6 @@ void move_window(window_t * w, int x, int y) {
     }
 
     // Before rendering, minimize the size of rectangles even further checking whether the region is covered by other windows(back face culling ?)
-
-
-
     for(int q = 0; q < new_size; q++) {
         if(dirty_regions[q].w == w) continue;
         window_display(dirty_regions[q].w, dirty_regions[q].rects, dirty_regions[q].len);
@@ -885,13 +764,6 @@ void sort_windows_array(window_t ** array, int size) {
 }
 
 /*
- * Display an array of window(only the intersecting part)
- * */
-void display_window_array(window_t ** array, int size) {
-
-}
-
-/*
  * Minimize window
  */
 void minimize_window(window_t * w) {
@@ -902,9 +774,7 @@ void minimize_window(window_t * w) {
     int oldw = w->width;
     int oldh = w->height;
 
-    // Step 1: Find all rectangles that are involved (just the rectangle of w, since this is a minimize operation)
     rect_t w_rect = rect_create(oldx, oldy, oldw, oldh);
-    // Step2: Find all windows that intersect with the rectangle (for each window, determine the intersecting portion, which is also a rectangle)
     int new_size = 0;
     calculate_intersections(&w_rect, windows_array, &new_size);
     sort_windows_array(windows_array, new_size);
@@ -930,10 +800,7 @@ void close_window(window_t * w) {
     int oldh = w->height;
     // Remove the window from tree
     tree_remove(windows_tree, w->self);
-
-    // Step 1: Find all rectangles that are involved (just the rectangle of w, since this is a minimize operation)
     rect_t w_rect = rect_create(oldx, oldy, oldw, oldh);
-    // Step2: Find all windows that intersect with the rectangle (for each window, determine the intersecting portion, which is also a rectangle)
     int new_size = 0;
     calculate_intersections(&w_rect, windows_array, &new_size);
     sort_windows_array(windows_array, new_size);
@@ -955,7 +822,6 @@ window_t * query_window_by_point(int x, int y) {
     window_t * possible_windows[20];
 
     // A list of windows that are standing on this pixel
-    //list_t * possible_windows = list_create();
     int num = 0;
     find_possible_windows(x, y, windows_tree->root, possible_windows, &num);
     // Now, we get a list of possible windows, find which one is on top (whichever has the most children is the one on top!)

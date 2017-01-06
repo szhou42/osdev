@@ -29,6 +29,10 @@ int get_pixel_idx(canvas_t * canvas, int x, int y);
 
 void set_pixel(canvas_t * canvas, uint32_t val, int x, int y);
 
+void remove_sharp_edges(canvas_t * canvas, int start_x, int start_y, int direction, int num_pixels, uint32_t end_alpha, uint32_t middle_alpha);
+
+void round_corner_effect(canvas_t * canvas);
+
 void set_fill_color(uint32_t color);
 
 void draw_rect(canvas_t * t, int x, int y, int width, int height);

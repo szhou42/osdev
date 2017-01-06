@@ -1,4 +1,5 @@
 #include <draw.h>
+#include <blend.h>
 #include <math.h>
 #include <compositor.h>
 
@@ -27,6 +28,41 @@ void set_pixel(canvas_t * canvas, uint32_t val, int x, int y) {
 }
 void set_fill_color(uint32_t color) {
     fill_color = color;
+}
+
+void remove_sharp_edges(canvas_t * canvas, int start_x, int start_y, int direction, int num_pixels, uint32_t end_alpha, uint32_t middle_alpha) {
+    uint32_t idx, color, count, alpha;
+    int i, j;
+    i = start_y; j = start_x, count = num_pixels;
+    while(count-- > 0) {
+        idx = get_pixel_idx(canvas, j, i);
+        color = canvas->framebuffer[idx];
+        // Change alpha here, depending on count value
+        if(count == 0 || count == num_pixels - 1)
+            alpha = end_alpha;
+        else
+            alpha = middle_alpha;
+        set_pixel(canvas, SET_ALPHA(color, alpha), j, i);
+        i++;
+        j += direction;
+    }
+}
+
+void round_corner_effect(canvas_t * canvas) {
+    // Leave some pixels transparent
+    for(int i = 0; i < 3; i++) {
+        for(int j = 0; j < 3 - i; j++) {
+            set_pixel(canvas, 0x0, j, i);
+            set_pixel(canvas, 0x0, canvas->width - 3 + i + j, i);
+        }
+    }
+    remove_sharp_edges(canvas, 0, canvas->width - 4, 1, 4, 0x88, 0xee);
+    remove_sharp_edges(canvas, 0, canvas->width - 5, 1, 5, 0xff, 0xee);
+    remove_sharp_edges(canvas, 1, canvas->width - 5, 1, 4, 0xff, 0xff);
+
+    remove_sharp_edges(canvas, 0, 3, -1, 4, 0x88, 0xee);
+    remove_sharp_edges(canvas, 0, 4, -1, 5, 0x88, 0xee);
+    remove_sharp_edges(canvas, 1, 4, -1, 4, 0x88, 0xee);
 }
 
 void draw_rect(canvas_t * canvas, int x, int y, int width, int height) {

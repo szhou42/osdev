@@ -125,8 +125,6 @@ typedef struct window_dirty_region {
 
 void calculate_intersections(rect_t * rect, window_t ** array, int * return_size);
 
-void display_window_array(window_t ** array, int size);
-
 void sort_windows_array(window_t ** array, int size);
 
 void window_add_round_corner(window_t * w);
