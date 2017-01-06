@@ -47,6 +47,8 @@ int is_rect_overlap(rect_t rect1, rect_t rect2);
 
 rect_t find_rect_overlap(rect_t rect1, rect_t rect2);
 
+int is_point_in_rect(int point_x, int point_y, rect_t * r);
+
 rect_t rect_create(int x, int y, int width, int height);
 
 canvas_t canvas_create(int width, int height, uint32_t * framebuffer);

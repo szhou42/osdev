@@ -14,12 +14,6 @@
 #include <blend.h>
 
 
-/*
- *  Why not to use black color in this os ??
- *  :( Unfortunately, a hack I used for displaying transparent-background cursor bitmap is that: I ignore all black colors, I view them as transparent color, because 0x00000000 in bmp file means
- *   transparent, this hack is ridiculous, I will fix this!!
- * */
-
 gtree_t * windows_tree;
 list_t * windows_list;
 window_t * windows_array[200];
@@ -34,7 +28,7 @@ window_t * focus_w;
 uint32_t * intermediate_framebuffer;
 
 /*
- * In OS X's window's title bar, each row's color increments, instead of having one color for the entire title bar
+ * In Ubuntu's window's title bar, each row's color increments, instead of having one color for the entire title bar
  */
 uint32_t title_bar_colors[TITLE_BAR_HEIGHT] = {0xff59584f, 0xff5f5d53, 0xff58564e, 0xff57554d, 0xff56544c, 0xff55534b, \
     0xff54524a, 0xff525049, 0xff514f48, 0xff504e47, 0xff4e4c45, 0xff4e4c45, \
@@ -43,17 +37,19 @@ uint32_t title_bar_colors[TITLE_BAR_HEIGHT] = {0xff59584f, 0xff5f5d53, 0xff58564
 
 rect_t rects[2];
 
-int left_button_held_down;
-int right_button_held_down;
+int left_button_held_down, right_button_held_down;
 
 int moving = 0;
 window_t * moving_window;
 point_t last_mouse_position;
 
-int close_highlight;
-int minimize_highlight;
-int maximize_highlight;
+int close_highlight, minimize_highlight, maximize_highlight;
 
+bitmap_t * normal_close_bmp, * normal_minimize_bmp, *normal_maximize_bmp;
+bitmap_t * highlight_close_bmp, * highlight_minimize_bmp, *highlight_maximize_bmp;
+
+rect_region_t close_region, minimize_region, maximize_region;
+rect_region_t highlight_close_region, highlight_minimize_region, highlight_maximize_region;
 
 #define DEBUG_GUI 0
 
@@ -92,23 +88,21 @@ window_t * get_focus_window() {
  * The window needs to receive user inputs like mouse movement, keyboard keypress, and others.
  * */
 void window_message_handler(winmsg_t * msg) {
-    char key_pressed;
+    int point_at_close = 0, point_at_minimize = 0, point_at_maximize = 0;
     window_t * w = msg->window;
+    // char key_pressed;
     // Translate the cursor_x and cursor_y to base on the window's coord, not the screen's coord
-    point_t p = get_canonical_coordinates(w);
-    int cursor_x = msg->cursor_x - p.x;
-    int cursor_y = msg->cursor_y - p.y;
-    //qemu_printf("%s(d = %d): ", w->name, w->depth);
+    point_t p = get_device_coordinates(w);
+    int cursor_x = msg->cursor_x - p.x,  cursor_y = msg->cursor_y - p.y;
     rect_t r = rect_create(0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
     rect_t r2 = rect_create(0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
     rect_t r3 = rect_create(0, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
     switch(msg->msg_type) {
         case WINMSG_MOUSE:
             if(msg->sub_type == WINMSG_MOUSE_MOVE) {
-                //qemu_printf("mouse move\n");
                 if(left_button_held_down) {
-                    // Title bar
-                    r.x = TITLE_BAR_HEIGHT * 2;
+                    // Title bar (anything besides the window body and close/minimize/maximize buttons)
+                    r.x = 62;
                     r.width = w->width - r.x;
                     if(is_point_in_rect(cursor_x, cursor_y, &r) || moving) {
                         if(moving) {
@@ -129,133 +123,59 @@ void window_message_handler(winmsg_t * msg) {
                     qemu_printf("mouse over [%s]\n", w->name);
                     // Set button highlights
                     // Close button
-                    r.x = 7;
-                    r.height= 17;
-                    r2.x = 26;
-                    r2.y = 3;
-                    r3.x = 45;
-                    r3.y = 3;
+                    r.x = 7; r.height= 17;
+                    r2.x = 26; r2.y = 3;
+                    r3.x = 45; r3.y = 3;
                     rect_t temp_rect;
-                    int point_at_close = 0;
-                    int point_at_minimize = 0;
-                    int point_at_maximize = 0;
-                    if(is_point_in_rect(cursor_x, cursor_y, &r)) {
-                        bitmap_t * close_bmp = bitmap_create("/red_highlight.bmp");
-                        canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
-                        rect_region_t close_region;
-                        close_region.r.x = 7; // (7)
-                        close_region.r.y = 3;
-                        close_region.r.width = close_bmp->width;
-                        close_region.r.height = close_bmp->height;
-                        close_region.region = (void*)close_bmp->image_bytes;
-                        qemu_printf("draw pixels\n");
-                        draw_rect_pixels(&canvas, &close_region);
-                        temp_rect.x = p.x + close_region.r.x;
-                        temp_rect.y = p.y + close_region.r.y;
-                        temp_rect.width = close_region.r.width;
-                        temp_rect.height = close_region.r.height;
+                    canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
+                    if((point_at_close = is_point_in_rect(cursor_x, cursor_y, &r))) {
+                        draw_rect_pixels(&canvas, &highlight_close_region);
+                        get_device_rect(&temp_rect, &highlight_close_region.r, &p);
                         window_display(w, &temp_rect, 1);
+                        draw_mouse();
                         video_memory_update(&temp_rect, 1);
                         close_highlight = 1;
-                        point_at_close = 1;
                     }
                     // Minimize button
-                    if(is_point_in_rect(cursor_x, cursor_y, &r2)) {
-                        canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
-                        // Load and draw minimize button
-                        bitmap_t * minimize_bmp = bitmap_create("/minimize_highlight.bmp");
-                        rect_region_t minimize_region;
-                        minimize_region.r.x = 7 + 17 + 2; // (26)
-                        minimize_region.r.y = 3;
-                        minimize_region.r.width = minimize_bmp->width;
-                        minimize_region.r.height = minimize_bmp->height;
-                        minimize_region.region = (void*)minimize_bmp->image_bytes;
-                        draw_rect_pixels(&canvas, &minimize_region);
-                        temp_rect.x = p.x + minimize_region.r.x;
-                        temp_rect.y = p.y + minimize_region.r.y;
-                        temp_rect.width = minimize_region.r.width;
-                        temp_rect.height = minimize_region.r.height;
+                    if((point_at_minimize = is_point_in_rect(cursor_x, cursor_y, &r2))) {
+                        draw_rect_pixels(&canvas, &highlight_minimize_region);
+                        get_device_rect(&temp_rect, &highlight_minimize_region.r, &p);
                         window_display(w, &temp_rect, 1);
+                        draw_mouse();
                         video_memory_update(&temp_rect, 1);
                         minimize_highlight = 1;
-                        point_at_minimize = 1;
                     }
-                    if(is_point_in_rect(cursor_x, cursor_y, &r3)) {
-                        canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
-                        // Load and draw maximize button
-                        bitmap_t * maximize_bmp = bitmap_create("/maximize_highlight.bmp");
-                        rect_region_t maximize_region;
-                        maximize_region.r.x = 7 + 17 + 2 + 17 + 2; // (45)
-                        maximize_region.r.y = 3;
-                        maximize_region.r.width = maximize_bmp->width;
-                        maximize_region.r.height = maximize_bmp->height;
-                        maximize_region.region = (void*)maximize_bmp->image_bytes;
-                        draw_rect_pixels(&canvas, &maximize_region);
-                        temp_rect.x = p.x + maximize_region.r.x;
-                        temp_rect.y = p.y + maximize_region.r.y;
-                        temp_rect.width = maximize_region.r.width;
-                        temp_rect.height = maximize_region.r.height;
+                    if((point_at_maximize = is_point_in_rect(cursor_x, cursor_y, &r3))) {
+                        draw_rect_pixels(&canvas, &highlight_maximize_region);
+                        get_device_rect(&temp_rect, &highlight_maximize_region.r, &p);
                         window_display(w, &temp_rect, 1);
+                        draw_mouse();
                         video_memory_update(&temp_rect, 1);
                         maximize_highlight = 1;
-                        point_at_maximize = 1;
                     }
                     // Cancel highlight, if highlight == 1 && point is not in rect
                     if(close_highlight && !point_at_close) {
-                        bitmap_t * close_bmp = bitmap_create("/normal_close.bmp");
-                        canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
-                        rect_region_t close_region;
-                        close_region.r.x = 7; // (7)
-                        close_region.r.y = 3;
-                        close_region.r.width = close_bmp->width;
-                        close_region.r.height = close_bmp->height;
-                        close_region.region = (void*)close_bmp->image_bytes;
-                        qemu_printf("draw pixels\n");
                         draw_rect_pixels(&canvas, &close_region);
-                        temp_rect.x = p.x + close_region.r.x;
-                        temp_rect.y = p.y + close_region.r.y;
-                        temp_rect.width = close_region.r.width;
-                        temp_rect.height = close_region.r.height;
+                        get_device_rect(&temp_rect, &close_region.r, &p);
                         window_display(w, &temp_rect, 1);
+                        draw_mouse();
                         video_memory_update(&temp_rect, 1);
                         close_highlight = 0;
                     }
                     if(minimize_highlight && !point_at_minimize) {
-                        canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
-                        // Load and draw minimize button
-                        bitmap_t * minimize_bmp = bitmap_create("/normal_minimize.bmp");
-                        rect_region_t minimize_region;
-                        minimize_region.r.x = 7 + 17 + 2; // (26)
-                        minimize_region.r.y = 3;
-                        minimize_region.r.width = minimize_bmp->width;
-                        minimize_region.r.height = minimize_bmp->height;
-                        minimize_region.region = (void*)minimize_bmp->image_bytes;
                         draw_rect_pixels(&canvas, &minimize_region);
-                        temp_rect.x = p.x + minimize_region.r.x;
-                        temp_rect.y = p.y + minimize_region.r.y;
-                        temp_rect.width = minimize_region.r.width;
-                        temp_rect.height = minimize_region.r.height;
+                        get_device_rect(&temp_rect, &minimize_region.r, &p);
                         window_display(w, &temp_rect, 1);
+                        draw_mouse();
                         video_memory_update(&temp_rect, 1);
                         minimize_highlight = 0;
 
                     }
                     if(maximize_highlight && !point_at_maximize) {
-                        canvas_t canvas = canvas_create(w->width, w->height, w->blended_framebuffer);
-                        // Load and draw maximize button
-                        bitmap_t * maximize_bmp = bitmap_create("/normal_maximize.bmp");
-                        rect_region_t maximize_region;
-                        maximize_region.r.x = 7 + 17 + 2 + 17 + 2; // (45)
-                        maximize_region.r.y = 3;
-                        maximize_region.r.width = maximize_bmp->width;
-                        maximize_region.r.height = maximize_bmp->height;
-                        maximize_region.region = (void*)maximize_bmp->image_bytes;
                         draw_rect_pixels(&canvas, &maximize_region);
-                        temp_rect.x = p.x + maximize_region.r.x;
-                        temp_rect.y = p.y + maximize_region.r.y;
-                        temp_rect.width = maximize_region.r.width;
-                        temp_rect.height = maximize_region.r.height;
+                        get_device_rect(&temp_rect, &maximize_region.r, &p);
                         window_display(w, &temp_rect, 1);
+                        draw_mouse();
                         video_memory_update(&temp_rect, 1);
                         maximize_highlight = 0;
                     }
@@ -268,11 +188,9 @@ void window_message_handler(winmsg_t * msg) {
 
             if(msg->sub_type == WINMSG_MOUSE_RIGHT_BUTTONDOWN) {
                 right_button_held_down = 1;
-                //qemu_printf("right button held down\n");
             }
 
             if(msg->sub_type == WINMSG_MOUSE_LEFT_BUTTONUP) {
-                qemu_printf("left button up\n");
                 left_button_held_down = 0;
                 if(moving) {
                     moving = 0;
@@ -316,52 +234,15 @@ void window_message_handler(winmsg_t * msg) {
             }
 
             if(msg->sub_type == WINMSG_MOUSE_LEFT_BUTTONDOWN) {
-                qemu_printf("left button down\n");
                 left_button_held_down = 1;
                 // Set window focus
                 window_set_focus(w);
-                //qemu_printf("left button held down\n");
             }
 
             break;
         case WINMSG_KEYBOARD:
-            key_pressed = msg->key_pressed;
-            //qemu_printf("%s receives a key press [%c]\n", w->name, key_pressed);
-            switch(key_pressed) {
-                case 'u':
-                    move_window(w, p.x - 10, p.y - 10);
-                    break;
-
-                case 'i':
-                    move_window(w, p.x + 10, p.y - 10);
-                    break;
-
-                case 'j':
-                    move_window(w, p.x - 10, p.y + 10);
-                    break;
-
-                case 'k':
-                    move_window(w, p.x + 10, p.y + 10);
-                    break;
-
-                case 'w':
-                    move_window(w, p.x, p.y - 10);
-                    break;
-
-                case 's':
-                    move_window(w, p.x, p.y + 10);
-                    break;
-
-                case 'a':
-                    move_window(w, p.x - 10, p.y);
-                    break;
-
-                case 'd':
-                    move_window(w, p.x + 10, p.y);
-                    break;
-                default:
-                    break;
-            }
+            //key_pressed = msg->key_pressed;
+            // Process keyboard events here
             break;
         default:
             break;
@@ -373,7 +254,7 @@ void window_message_handler(winmsg_t * msg) {
  */
 window_t * alertbox_create(window_t * parent, int x, int y, char * title, char * text) {
     window_t * alertbox = window_create(parent, x, y, 200, 160, WINDOW_ALERT, "window_classic");
-    window_add_headline(alertbox, "classic");
+    window_add_title_bar(alertbox);
     window_add_close_button(alertbox);
     canvas_t canvas_alertbox = canvas_create(alertbox->width, alertbox->height, alertbox->frame_buffer);
     set_font_color(VESA_COLOR_BLACK + 1);
@@ -460,20 +341,17 @@ void window_set_focus(window_t * w) {
     // Bring window to the front
     // Destroy the under and above list and re-calculate them
     if(w->type != WINDOW_SUPER) {
-        //qemu_printf("Set focus start\n");
-        print_windows_depth();
         int idx = 0;
-        point_t p = get_canonical_coordinates(w);
-        // Step 1: Find all rectangles that are involved (just the rectangle of w, since this is a minimize operation)
+        int size = 0;
+        point_t p = get_device_coordinates(w);
         rect_t w_rect = rect_create(p.x, p.y, w->width, w->height);
         // For all windows involved, recalculate the list: under_windows, above_windows
-        int size = 0;
         tree2array(windows_tree, (void**)windows_array, &size);
 
         for(int i = 0; i < size; i++) {
             window_t * curr_w = windows_array[i];
             if(curr_w->is_minimized || curr_w == w) continue;
-            p = get_canonical_coordinates(curr_w);
+            p = get_device_coordinates(curr_w);
             rect_t curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
             if(is_rect_overlap(w_rect, curr_rect)) {
                 // Remove w from curr_w's under_windows
@@ -493,15 +371,13 @@ void window_set_focus(window_t * w) {
         w->depth = list_size(w->above_windows);
 
         // Redraw
-        p = get_canonical_coordinates(w);
+        p = get_device_coordinates(w);
         rect_t r = rect_create(p.x, p.y, w->width, w->height);
         window_display(w, NULL, 0);
         draw_mouse();
         video_memory_update(&r, 1);
     }
     focus_w = w;
-    //qemu_printf("Set focus finish\n");
-    print_windows_depth();
 }
 
 /*
@@ -610,16 +486,12 @@ void window_add_round_corner(window_t * w) {
 }
 
 /*
- * Below is a set of functions that add components to a window by either 1) drawing on the frame buffer of the window, or adding child window(which has its own frame buffer and relative coord)
+ * Draw a title bar for the window
+ * window title bar has height = TITLE_BAR_HEIGHT, hardcoded
  * */
-
-/*
- * Draw a headline for the window, given a headline string
- * window headline has height = TITLE_BAR_HEIGHT, hardcoded
- * */
-void window_add_headline(window_t * w, char * headline) {
+void window_add_title_bar(window_t * w) {
     // Draw a rectangle at the start of the window
-    // It should have a headline area that gradually increases color in each row
+    // It should have a title bar area that gradually increases color in each row
     canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
     for(int i = 0; i < TITLE_BAR_HEIGHT; i++) {
         set_fill_color(title_bar_colors[i] | 0x88000000);
@@ -628,56 +500,29 @@ void window_add_headline(window_t * w, char * headline) {
 }
 
 /*
- * Draw a close button for headline (size is 18*18)
+ * Draw a close button for title bar (size is 18*18)
  * */
 void window_add_close_button(window_t * w) {
-    canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
+    canvas_t close_btn_canvas = canvas_create(w->width, w->height, w->frame_buffer);
     // Load and draw close button
-    qemu_printf("create bitmap\n");
-    bitmap_t * close_bmp = bitmap_create("/normal_close.bmp");
-    qemu_printf("create bitmap done\n");
-    rect_region_t close_region;
-    close_region.r.x = 7; // (7)
-    close_region.r.y = 3;
-    close_region.r.width = close_bmp->width;
-    close_region.r.height = close_bmp->height;
-    close_region.region = (void*)close_bmp->image_bytes;
-    qemu_printf("draw pixels\n");
-    draw_rect_pixels(&canvas, &close_region);
+    draw_rect_pixels(&close_btn_canvas, &close_region);
 }
 
 /*
- * Draw a minimize button for headline
+ * Draw a minimize button for title bar
  * */
 void window_add_minimize_button(window_t * w) {
-    canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
-    // Load and draw minimize button
-    bitmap_t * minimize_bmp = bitmap_create("/normal_minimize.bmp");
-    rect_region_t minimize_region;
-    minimize_region.r.x = 7 + 17 + 2; // (26)
-    minimize_region.r.y = 3;
-    minimize_region.r.width = minimize_bmp->width;
-    minimize_region.r.height = minimize_bmp->height;
-    minimize_region.region = (void*)minimize_bmp->image_bytes;
-    draw_rect_pixels(&canvas, &minimize_region);
+    canvas_t minimize_btn_canvas = canvas_create(w->width, w->height, w->frame_buffer);
+    draw_rect_pixels(&minimize_btn_canvas, &minimize_region);
 }
 
 /*
- * Draw a maximize button for headline
+ * Draw a maximize button for title bar
  * */
 void window_add_maximize_button(window_t * w) {
-    canvas_t canvas = canvas_create(w->width, w->height, w->frame_buffer);
-    // Load and draw maximize button
-    bitmap_t * maximize_bmp = bitmap_create("/normal_maximize.bmp");
-    rect_region_t maximize_region;
-    maximize_region.r.x = 7 + 17 + 2 + 17 + 2; // (45)
-    maximize_region.r.y = 3;
-    maximize_region.r.width = maximize_bmp->width;
-    maximize_region.r.height = maximize_bmp->height;
-    maximize_region.region = (void*)maximize_bmp->image_bytes;
-    draw_rect_pixels(&canvas, &maximize_region);
+    canvas_t maximize_btn_canvas = canvas_create(w->width, w->height, w->frame_buffer);
+    draw_rect_pixels(&maximize_btn_canvas, &maximize_region);
 }
-
 
 /*
  * Recursively find out what windows are under window w
@@ -722,7 +567,7 @@ void window_display(window_t * w, rect_t * rects, int size) {
     // If the frame buffer is not null, also draw the frame buffer
     if(w->frame_buffer) {
         rect_reg.region = w->blended_framebuffer;
-        point_t p = get_canonical_coordinates(w);
+        point_t p = get_device_coordinates(w);
         if(rects) {
             // Draw part(s) of the window
             for(int i = 0; i < size; i++) {
@@ -738,7 +583,6 @@ void window_display(window_t * w, rect_t * rects, int size) {
             // Draw entire window
             draw_rect_pixels(&canvas, &rect_reg);
         }
-        //repaint(rect_reg.r);
         display_recur(w->self);
     }
 }
@@ -753,16 +597,7 @@ void display_all_window() {
     int size = 0;
     tree2array(windows_tree, (void**)windows_array, &size);
     // Bubble sort window list, by depth
-    for(int i = 0; i < size - 1; i++) {
-        for(int j = 0; j < size - 1; j++) {
-            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
-                window_t * swap = windows_array[j];
-                windows_array[j] = windows_array[j + 1];
-                windows_array[j + 1] = swap;
-            }
-        }
-    }
-
+    sort_windows_array(windows_array, size);
     for(int i = 0; i < size; i++) {
         window_display(windows_array[i], NULL, 0);
         video_memory_update(NULL, 0);
@@ -790,22 +625,15 @@ window_t * get_super_window() {
     return windows_tree->root->value;
 }
 
+/*
+ * Get a handle to desktop bar
+ * */
 window_t * get_desktop_bar() {
     return desktop_bar;
 }
 
-
 /*
- * The fill color is used when I drew window directly to the screen buffer, it's deprecated now.
- */
-void set_window_fillcolor(window_t * w, uint32_t color) {
-    w->fill_color = color;
-}
-
-
-
-/*
- * Move window to a start at (x,y)
+ * Move window to (x,y)
  */
 void move_window(window_t * w, int x, int y) {
     if(moving && moving_window != w) {
@@ -826,7 +654,6 @@ void move_window(window_t * w, int x, int y) {
     if(y + w->height >= canvas.height)
         y = canvas.height - w->height;
 
-    //qemu_printf("Move window from [%d, %d] to [%d, %d], w = %d, h = %d\n", w->x, w->y, x, y, w->width, w->height);
     rect_t curr_rect;
     int oldx = w->x;
     int oldy = w->y;
@@ -866,11 +693,9 @@ void move_window(window_t * w, int x, int y) {
     }
     if(rect1.width != 0 && rect1.height != 0) {
         dirty_rects[rect_size++] = rect1;
-        //qemu_printf("%dth rect: [x: %d y: %d w: %d h: %d]\n", rect_size, rect1.x, rect1.y, rect1.width, rect1.height);
     }
     if(rect2.width != 0 && rect2.height != 0) {
         dirty_rects[rect_size++] = rect2;
-        //qemu_printf("%dth rect: [x: %d y: %d w: %d h: %d]\n", rect_size, rect2.x, rect2.y, rect2.width, rect2.height);
     }
 
     // Step2: What are the windows and their intersections related to each rectangle
@@ -881,7 +706,7 @@ void move_window(window_t * w, int x, int y) {
     for(int j = 0; j < size; j++) {
         window_t * curr_w = windows_array[j];
         if(curr_w->is_minimized || curr_w == w) continue;
-        p = get_canonical_coordinates(curr_w);
+        p = get_device_coordinates(curr_w);
         curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
         for(int i = 0; i < rect_size; i++) {
             if(is_rect_overlap(dirty_rects[i], curr_rect)) {
@@ -916,7 +741,6 @@ void move_window(window_t * w, int x, int y) {
     }
 
     // Step4: Draw window w on new position
-    //blend_windows(w);
     blend_title_bar(w, 0);
     blend_title_bar(w, 1);
     window_display(w, NULL, 0);
@@ -925,29 +749,23 @@ void move_window(window_t * w, int x, int y) {
     curr_rect = rect_create(x, y, w->width, w->height);
     dirty_rects[rect_size++] = curr_rect;
 
-    //qemu_printf("------\n");
-    for(int i = 0; i < rect_size; i++) {
-        //qemu_printf("dirty_rects[%d]: [%d,%d,%d,%d]", i, dirty_rects[i].x, dirty_rects[i].y, dirty_rects[i].width, dirty_rects[i].height);
-    }
-    //qemu_printf("------\n");
     video_memory_update(dirty_rects, rect_size);
     window_set_focus(w);
 }
 
 /*
- * Blending entire window is expensive, instead,we only blend the title bar, especially the round corners
+ * Blending entire window is expensive, instead,we only blend the top left and right corners (to implement round corners)
  * */
 void blend_title_bar(window_t * w, int left) {
     if(w->type == WINDOW_SUPER) {
         memcpy(w->blended_framebuffer, w->frame_buffer, w->width * w->height * 4);
         return;
     }
-    rect_t curr_rect;
-    point_t p = get_canonical_coordinates(w);
+    point_t p = get_device_coordinates(w);
     int oldx = p.x;
     int oldy = p.y;
     int oldw = w->width;
-
+    int new_size;
     // Step 1: Find all rectangles that are involved (just the rectangle of w in this case)
     rect_t w_rect;
     if(left)
@@ -956,38 +774,11 @@ void blend_title_bar(window_t * w, int left) {
         w_rect = rect_create(oldx + oldw - 10, oldy, 10, TITLE_BAR_HEIGHT);
 
     // Step2: Find all windows that intersect with the rectangle (for each window, determine the intersecting portion, which is also a rectangle)
-    int size = 0;
-    int new_size = 0;
-    tree2array(windows_tree, (void**)windows_array, &size);
-
-    for(int i = 0; i < size; i++) {
-        window_t * curr_w = windows_array[i];
-        if(curr_w->is_minimized) continue;
-        p = get_canonical_coordinates(curr_w);
-        curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
-        if(is_rect_overlap(w_rect, curr_rect)) {
-            curr_w->intersection_rect = find_rect_overlap(w_rect, curr_rect);
-            windows_array[new_size++] = curr_w;
-        }
-    }
-    // Step3: Sort all window. For each window, find the portions that are not covered by other more shallow windows
-    // Second part of step3 can greatly reduce latency for situation where multiple windows overlap each other, i may implement it later if necessary
-    // But minimize window now looks pretty smooth already.
-
-    // Bubble sort window list, by depth
-    for(int i = 0; i < new_size - 1; i++) {
-        for(int j = 0; j < new_size - 1; j++) {
-            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
-                window_t * swap = windows_array[j];
-                windows_array[j] = windows_array[j + 1];
-                windows_array[j + 1] = swap;
-            }
-        }
-    }
-
+    calculate_intersections(&w_rect, windows_array, &new_size);
+    sort_windows_array(windows_array, new_size);
     // Blend w with each of the windows, from back to front
     for(int i = 0; i < new_size; i++) {
-        if(windows_array[i]->depth > w->depth)
+        if(windows_array[i] != w && windows_array[i]->depth > w->depth)
             blend_window_rect(w, windows_array[i]);
     }
 }
@@ -1004,44 +795,16 @@ void blend_windows(window_t * w) {
         memcpy(w->blended_framebuffer, w->frame_buffer, w->width * w->height * 4);
         return;
     }
-    rect_t curr_rect;
-    point_t p = get_canonical_coordinates(w);
+    point_t p = get_device_coordinates(w);
     int oldx = p.x;
     int oldy = p.y;
     int oldw = w->width;
     int oldh = w->height;
 
-    // Step 1: Find all rectangles that are involved (just the rectangle of w in this case)
     rect_t w_rect = rect_create(oldx, oldy, oldw, oldh);
-    // Step2: Find all windows that intersect with the rectangle (for each window, determine the intersecting portion, which is also a rectangle)
-    int size = 0;
-    int new_size = 0;
-    tree2array(windows_tree, (void**)windows_array, &size);
-
-    for(int i = 0; i < size; i++) {
-        window_t * curr_w = windows_array[i];
-        if(curr_w->is_minimized) continue;
-        p = get_canonical_coordinates(curr_w);
-        curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
-        if(is_rect_overlap(w_rect, curr_rect)) {
-            curr_w->intersection_rect = find_rect_overlap(w_rect, curr_rect);
-            windows_array[new_size++] = curr_w;
-        }
-    }
-    // Step3: Sort all window. For each window, find the portions that are not covered by other more shallow windows
-    // Second part of step3 can greatly reduce latency for situation where multiple windows overlap each other, i may implement it later if necessary
-    // But minimize window now looks pretty smooth already.
-
-    // Bubble sort window list, by depth
-    for(int i = 0; i < new_size - 1; i++) {
-        for(int j = 0; j < new_size - 1; j++) {
-            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
-                window_t * swap = windows_array[j];
-                windows_array[j] = windows_array[j + 1];
-                windows_array[j + 1] = swap;
-            }
-        }
-    }
+    int new_size;
+    calculate_intersections(&w_rect, windows_array, &new_size);
+    sort_windows_array(windows_array, new_size);
 
     // Blend w with each of the windows, from back to front
     for(int i = 0; i < new_size; i++) {
@@ -1050,7 +813,9 @@ void blend_windows(window_t * w) {
     }
 }
 
-
+/*
+ * Blend top window with bottom window (only blend the region specified by bottom_w->intersection_rect)
+ * */
 void blend_window_rect(window_t * top_w, window_t * bottom_w) {
     uint32_t top_color, bottom_color, blended_color;
     point_t p;
@@ -1072,16 +837,66 @@ void blend_window_rect(window_t * top_w, window_t * bottom_w) {
     }
 }
 
+/*
+ * Maximize window
+ * */
 void maximize_window(window_t * w) {
     qemu_printf("Hi, this is not implemented yet\n");
 }
+
+/*
+ * Calculate the intersection between a rectangle and each of the windows
+ * Write the intersection to window->intersection_rect
+ * Also, return an array of windows, and size of the array
+ * */
+void calculate_intersections(rect_t * rect, window_t ** array, int * return_size) {
+    int size = 0;
+    int new_size = 0;
+    point_t p;
+    rect_t curr_rect;
+    tree2array(windows_tree, (void**)array, &size);
+
+    for(int i = 0; i < size; i++) {
+        window_t * curr_w = array[i];
+        if(curr_w->is_minimized) continue;
+        p = get_device_coordinates(curr_w);
+        curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
+        if(is_rect_overlap(*rect, curr_rect)) {
+            curr_w->intersection_rect = find_rect_overlap(*rect, curr_rect);
+            array[new_size++] = curr_w;
+        }
+    }
+    *return_size = new_size;
+}
+
+/*
+ * Sort an array of windows by depth
+ * */
+void sort_windows_array(window_t ** array, int size) {
+    for(int i = 0; i < size - 1; i++) {
+        for(int j = 0; j < size - 1; j++) {
+            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
+                window_t * swap = windows_array[j];
+                windows_array[j] = windows_array[j + 1];
+                windows_array[j + 1] = swap;
+            }
+        }
+    }
+}
+
+/*
+ * Display an array of window(only the intersecting part)
+ * */
+void display_window_array(window_t ** array, int size) {
+
+}
+
 /*
  * Minimize window
  */
 void minimize_window(window_t * w) {
-    rect_t curr_rect;
     w->is_minimized = 1;
-    point_t p = get_canonical_coordinates(w);
+    point_t p = get_device_coordinates(w);
     int oldx = p.x;
     int oldy = p.y;
     int oldw = w->width;
@@ -1090,44 +905,17 @@ void minimize_window(window_t * w) {
     // Step 1: Find all rectangles that are involved (just the rectangle of w, since this is a minimize operation)
     rect_t w_rect = rect_create(oldx, oldy, oldw, oldh);
     // Step2: Find all windows that intersect with the rectangle (for each window, determine the intersecting portion, which is also a rectangle)
-    int size = 0;
     int new_size = 0;
-    tree2array(windows_tree, (void**)windows_array, &size);
-
-    for(int i = 0; i < size; i++) {
-        window_t * curr_w = windows_array[i];
-        if(curr_w->is_minimized) continue;
-        p = get_canonical_coordinates(curr_w);
-        curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
-        if(is_rect_overlap(w_rect, curr_rect)) {
-            curr_w->intersection_rect = find_rect_overlap(w_rect, curr_rect);
-            windows_array[new_size++] = curr_w;
-        }
-    }
-    // Step3: Sort all window. For each window, find the portions that are not covered by other more shallow windows
-    // Second part of step3 can greatly reduce latency for situation where multiple windows overlap each other, i may implement it later if necessary
-    // But minimize window now looks pretty smooth already.
-
-    // Bubble sort window list, by depth
-    for(int i = 0; i < new_size - 1; i++) {
-        for(int j = 0; j < new_size - 1; j++) {
-            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
-                window_t * swap = windows_array[j];
-                windows_array[j] = windows_array[j + 1];
-                windows_array[j + 1] = swap;
-            }
-        }
-    }
+    calculate_intersections(&w_rect, windows_array, &new_size);
+    sort_windows_array(windows_array, new_size);
 
     for(int i = 0; i < new_size; i++) {
         window_display(windows_array[i], &windows_array[i]->intersection_rect, 1);
     }
     draw_mouse();
     // Step4, draw each of the window(only the part that's not covered), from the deepest one to the shalloest one
-    //display_all_window();
     rects[0] = w_rect;
     video_memory_update(rects, 1);
-    //video_memory_update(NULL, 0);
 }
 
 
@@ -1135,8 +923,7 @@ void minimize_window(window_t * w) {
  * Different from minimize_window, close_window actually removes the window from the window tree,
  */
 void close_window(window_t * w) {
-    rect_t curr_rect;
-    point_t p = get_canonical_coordinates(w);
+    point_t p = get_device_coordinates(w);
     int oldx = p.x;
     int oldy = p.y;
     int oldw = w->width;
@@ -1147,32 +934,9 @@ void close_window(window_t * w) {
     // Step 1: Find all rectangles that are involved (just the rectangle of w, since this is a minimize operation)
     rect_t w_rect = rect_create(oldx, oldy, oldw, oldh);
     // Step2: Find all windows that intersect with the rectangle (for each window, determine the intersecting portion, which is also a rectangle)
-    int size = 0;
     int new_size = 0;
-    tree2array(windows_tree, (void**)windows_array, &size);
-
-    for(int i = 0; i < size; i++) {
-        window_t * curr_w = windows_array[i];
-        if(curr_w->is_minimized) continue;
-        p = get_canonical_coordinates(curr_w);
-        curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
-        if(is_rect_overlap(w_rect, curr_rect)) {
-            curr_w->intersection_rect = find_rect_overlap(w_rect, curr_rect);
-            windows_array[new_size++] = curr_w;
-        }
-    }
-    // Step3: Sort all window. For each window, find the portions that are not covered by other more shallow windows
-    // Bubble sort window list, by depth
-    for(int i = 0; i < new_size - 1; i++) {
-        for(int j = 0; j < new_size - 1; j++) {
-            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
-                window_t * swap = windows_array[j];
-                windows_array[j] = windows_array[j + 1];
-                windows_array[j + 1] = swap;
-            }
-        }
-    }
-
+    calculate_intersections(&w_rect, windows_array, &new_size);
+    sort_windows_array(windows_array, new_size);
     for(int i = 0; i < new_size; i++) {
         window_display(windows_array[i], &windows_array[i]->intersection_rect, 1);
     }
@@ -1180,25 +944,6 @@ void close_window(window_t * w) {
     // Step4, draw each of the window(only the part that's not covered), from the deepest one to the shalloest one
     rects[0] = w_rect;
     video_memory_update(rects, 1);
-}
-
-/*
- * Resize window, this function doesn't work now after I start to give frame buffer to every window, don't use it for now
- */
-void resize_window(window_t * w, int new_width, int new_height) {
-
-}
-
-/*
- * Copy pixels in rect to dst
- * */
-void copy_rect(uint32_t * dst, rect_t r) {
-    for(int i = r.y; i < r.y + r.height; i++) {
-        for(int j = r.x; j < r.x + r.width; j++) {
-            *dst = intermediate_framebuffer[screen_width * i + j];
-            dst++;
-        }
-    }
 }
 
 /*
@@ -1231,53 +976,15 @@ window_t * query_window_by_point(int x, int y) {
 
 
 /*
- * Helper function for repaint(), paint a pixel given its (x,y)
- * */
-void paint_pixel(canvas_t * canvas, int x, int y) {
-    window_t * top_window = query_window_by_point(x, y);
-    if(top_window != NULL) {
-        set_pixel(canvas, get_window_pixel(top_window, x, y), x, y);
-    }
-}
-
-/*
  * Given a rectangle region, repaint the pixel it should have
  * */
 void repaint(rect_t r) {
-    rect_t curr_rect;
-    point_t p;
-    int size = 0;
     int new_size = 0;
-    tree2array(windows_tree, (void**)windows_array, &size);
-
-    for(int i = 0; i < size; i++) {
-        window_t * curr_w = windows_array[i];
-        if(curr_w->is_minimized) continue;
-        p = get_canonical_coordinates(curr_w);
-        curr_rect = rect_create(p.x, p.y, curr_w->width, curr_w->height);
-        if(is_rect_overlap(r, curr_rect)) {
-            curr_w->intersection_rect = find_rect_overlap(r, curr_rect);
-            windows_array[new_size++] = curr_w;
-        }
-    }
-    // Step3: Sort all window. For each window, find the portions that are not covered by other more shallow windows
-    // Bubble sort window list, by depth
-    for(int i = 0; i < new_size - 1; i++) {
-        for(int j = 0; j < new_size - 1; j++) {
-            if(windows_array[j]->depth < windows_array[j + 1]->depth) {
-                window_t * swap = windows_array[j];
-                windows_array[j] = windows_array[j + 1];
-                windows_array[j + 1] = swap;
-            }
-        }
-    }
-
+    calculate_intersections(&r, windows_array, &new_size);
+    sort_windows_array(windows_array, new_size);
     for(int i = 0; i < new_size; i++) {
         window_display(windows_array[i], &windows_array[i]->intersection_rect, 1);
     }
-
-    // Step4, draw each of the window(only the part that's not covered), from the deepest one to the shalloest one
-    //display_all_window();
     rects[0] = r;
     video_memory_update(rects, 1);
 
@@ -1312,20 +1019,12 @@ uint32_t get_window_pixel(window_t * w, int x, int y) {
     return w->frame_buffer[idx];
 }
 
-
-/*
- * Is a point in the rectangle ?
- */
-int is_point_in_rect(int point_x, int point_y, rect_t * r) {
-    return (point_x >= r->x && point_x < r->x + r->width) && (point_y >= r->y && point_y < r->y + r->height);
-}
-
 /*
  * Is a point in the window?
  */
 int is_point_in_window(int x, int y, window_t * w) {
     rect_t r;
-    point_t p = get_canonical_coordinates(w);
+    point_t p = get_device_coordinates(w);
     r.x = p.x;
     r.y = p.y;
     r.width = w->width;
@@ -1342,25 +1041,25 @@ canvas_t * get_screen_canvas() {
 }
 
 /*
- * Canonical coordinates is the coordinates relative to the whole screen
+ * device coordinates is the coordinates relative to the whole screen
  * Relative coordinates is the coordiantes relative to its parent
- * This function convert canonical coords to relative
+ * This function convert device coords to relative
  */
 point_t get_relative_coordinates(window_t * w, int x, int y) {
-    point_t p = get_canonical_coordinates(w);
+    point_t p = get_device_coordinates(w);
     p.x = x - p.x;
     p.y = y - p.y;
     return p;
 }
 
 /*
- * This function convert relative coords to canonical one
+ * This function convert relative coordinates to device one
  */
-point_t get_canonical_coordinates(window_t * w) {
+point_t get_device_coordinates(window_t * w) {
     point_t p;
     p.x = w->x;
     p.y = w->y;
-    // Calculate the canonical xy coords
+    // Calculate the device xy coords
     window_t * runner = w->parent;
     while(runner != NULL) {
         p.x += runner->x;
@@ -1370,9 +1069,26 @@ point_t get_canonical_coordinates(window_t * w) {
     return p;
 }
 
+/*
+ * Convert a rectangle from using relative coordinates to device coordinates
+ * out_rect: output to this rectangle
+ * relative_rect: The rectangle relative to window
+ * p: Top left corner of the window
+ * */
+void get_device_rect(rect_t * out_rect, rect_t * relative_rect, point_t * p) {
+    out_rect->x = relative_rect->x + p->x;
+    out_rect->y = relative_rect->y +  p->y;
+    out_rect->width = relative_rect->width;
+    out_rect->height = relative_rect->height;
+}
+
+
+/*
+ * Getter for mouse position before user initializing a move window operation
+ * */
 point_t get_mouse_position_before_move() {
-    // First convert to canonical coordinates and then return
-    point_t p = get_canonical_coordinates(moving_window);
+    // First convert to device coordinates and then return
+    point_t p = get_device_coordinates(moving_window);
     p.x = p.x + last_mouse_position.x;
     p.y = p.y + last_mouse_position.y;
     return p;
@@ -1381,17 +1097,16 @@ point_t get_mouse_position_before_move() {
  * Is two window overlap ?
  */
 int is_window_overlap(window_t * w1, window_t * w2) {
-    point_t p1 = get_canonical_coordinates(w1);
-    point_t p2 = get_canonical_coordinates(w2);
+    point_t p1 = get_device_coordinates(w1);
+    point_t p2 = get_device_coordinates(w2);
     rect_t r1 = rect_create(p1.x, p1.y, w1->width, w1->height);
     rect_t r2 = rect_create(p2.x, p2.y, w2->width, w2->height);
     return is_rect_overlap(r1, r2);
 }
 
-
 /*
- * In my GUI system, instead of writing window's pixels to the video memory directly, I'll first write them to a intermediate buffer, and then sending the buffer to video memory
- * This avoids "refreshing the whole screen" every time window redraw.
+ * In my GUI system, instead of writing window's pixels to the video memory directly, I'll first write them to a intermediate buffer,
+ * and then sending the buffer to video memory. This avoids screen flickering
  */
 void video_memory_update(rect_t * rects, int len) {
     if(rects == NULL) {
@@ -1405,45 +1120,85 @@ void video_memory_update(rect_t * rects, int len) {
             for(int j = rect.y;  j < rect.y + rect.height; j++) {
                 for(int k = rect.x; k < rect.x + rect.width; k++) {
                     int idx = get_pixel_idx(&canvas, k, j);
-                    if(intermediate_framebuffer[idx] != 0x00000000) {
-                        screen[idx] = intermediate_framebuffer[idx];
-                    }
+                    screen[idx] = intermediate_framebuffer[idx];
                 }
             }
         }
     }
 }
 
+
+void close_button_init() {
+    normal_close_bmp = bitmap_create("/normal_close.bmp");
+    highlight_close_bmp = bitmap_create("/red_highlight.bmp");
+    close_region.r.x = 7; // (7)
+    close_region.r.y = 3;
+    close_region.r.width = normal_close_bmp->width;
+    close_region.r.height = normal_close_bmp->height;
+    close_region.region = (void*)normal_close_bmp->image_bytes;
+
+    highlight_close_region.r.x = 7; // (7)
+    highlight_close_region.r.y = 3;
+    highlight_close_region.r.width = highlight_close_bmp->width;
+    highlight_close_region.r.height = highlight_close_bmp->height;
+    highlight_close_region.region = (void*)highlight_close_bmp->image_bytes;
+}
+
+void minimize_button_init() {
+    normal_minimize_bmp = bitmap_create("/normal_minimize.bmp");
+    highlight_minimize_bmp = bitmap_create("/minimize_highlight.bmp");
+    minimize_region.r.x = 7 + 17 + 2; // (26)
+    minimize_region.r.y = 3;
+    minimize_region.r.width = normal_minimize_bmp->width;
+    minimize_region.r.height = normal_minimize_bmp->height;
+    minimize_region.region = (void*)normal_minimize_bmp->image_bytes;
+
+    highlight_minimize_region.r.x = 7 + 17 + 2; // (26)
+    highlight_minimize_region.r.y = 3;
+    highlight_minimize_region.r.width = highlight_minimize_bmp->width;
+    highlight_minimize_region.r.height = highlight_minimize_bmp->height;
+    highlight_minimize_region.region = (void*)highlight_minimize_bmp->image_bytes;
+}
+
+void maximize_button_init() {
+    normal_maximize_bmp = bitmap_create("/normal_maximize.bmp");
+    highlight_maximize_bmp = bitmap_create("/maximize_highlight.bmp");
+    maximize_region.r.x = 7 + 17 + 2 + 17 + 2; // (45)
+    maximize_region.r.y = 3;
+    maximize_region.r.width = normal_maximize_bmp->width;
+    maximize_region.r.height = normal_maximize_bmp->height;
+    maximize_region.region = (void*)normal_maximize_bmp->image_bytes;
+
+    highlight_maximize_region.r.x = 7 + 17 + 2 + 17 + 2; // (45)
+    highlight_maximize_region.r.y = 3;
+    highlight_maximize_region.r.width = highlight_maximize_bmp->width;
+    highlight_maximize_region.r.height = highlight_maximize_bmp->height;
+    highlight_maximize_region.region = (void*)highlight_maximize_bmp->image_bytes;
+}
+
 /*
- * Initialize compositor by getting info from vesa driver, creating screen cavans struct, and creating the super window and load desktop wallpaper
+ * Initialize compositor by getting info from vesa driver, creating screen cavans struct,
+ * and creating the desktop window with a wallpaper
  */
 void compositor_init() {
+    // Double buffering, avoid flickering
     intermediate_framebuffer = kmalloc(1024 * 768 * 4);
     // Get linear frame buffer from vesa driver
     screen = vesa_get_lfb();
     screen_width = vesa_get_resolution_x();
     screen_height = vesa_get_resolution_y();
     canvas = canvas_create(1024, 768, intermediate_framebuffer);
-
-
     // windows_list is only used when redrawing windows
     windows_list = list_create();
     // Initialize window tree to manage the windows to be created
-    // Create a base window, this should be the parent of all windows(super window)
     windows_tree = tree_create();
+    // Create a base window, this should be the parent of all windows(super window)
     window_t * w = window_create(NULL, 0, 0, screen_width, screen_height, WINDOW_SUPER, "desktop");
-    //window_add_headline(w, "");
-    set_window_fillcolor(w, VESA_COLOR_GREEN);
-
-#if 1
     bitmap_t * wallpaper = bitmap_create("/wallpaper.bmp");
     bitmap_to_framebuffer(wallpaper, w->frame_buffer);
-#endif
     blend_windows(w);
-#if 0
-    memsetdw(w->frame_buffer, 0x00ff00ff,1024*768);
-#endif
-
-    // Default fill color is black
-    fill_color =  (255 << 24) |(223 << 16) | (224 << 8) | 224;
+    // Initialize some data for buttons
+    close_button_init();
+    minimize_button_init();
+    maximize_button_init();
 }

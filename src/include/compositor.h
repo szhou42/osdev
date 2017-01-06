@@ -123,6 +123,11 @@ typedef struct window_dirty_region {
     int len;
 }window_dirty_region_t;
 
+void calculate_intersections(rect_t * rect, window_t ** array, int * return_size);
+
+void display_window_array(window_t ** array, int size);
+
+void sort_windows_array(window_t ** array, int size);
 
 void window_add_round_corner(window_t * w);
 
@@ -172,8 +177,6 @@ void recur_add_under_windows(window_t * w, gtreenode_t * subroot);
 
 window_t * query_window_by_point(int x, int y);
 
-void paint_pixel(canvas_t * canvas, int x, int y);
-
 void repaint(rect_t r);
 
 void find_possible_windows(int x, int y, gtreenode_t * subroot, window_t ** possible_windows, int * num);
@@ -184,7 +187,7 @@ int is_point_in_window(int x, int y, window_t * w);
 
 canvas_t * get_screen_canvas();
 
-void window_add_headline(window_t * w, char * headline);
+void window_add_title_bar(window_t * w);
 
 void window_add_close_button(window_t * w);
 
@@ -192,11 +195,11 @@ void window_add_minimize_button(window_t * w);
 
 void window_add_maximize_button(window_t * w);
 
-int is_point_in_rect(int point_x, int point_y, rect_t * r);
-
 void window_message_handler(winmsg_t * msg);
 
-point_t get_canonical_coordinates(window_t * w);
+point_t get_device_coordinates(window_t * w);
+
+void get_device_rect(rect_t * out_rect, rect_t * relative_rect, point_t * p);
 
 window_t * alertbox_create(window_t * parent, int x, int y, char * title, char * text);
 

@@ -161,6 +161,13 @@ rect_t find_rect_overlap(rect_t rect1, rect_t rect2) {
     return ret;
 }
 
+/*
+ *  * Is a point in the rectangle ?
+ *   */
+int is_point_in_rect(int point_x, int point_y, rect_t * r) {
+        return (point_x >= r->x && point_x < r->x + r->width) && (point_y >= r->y && point_y < r->y + r->height);
+}
+
 rect_t rect_create(int x, int y, int width, int height) {
     rect_t r;
     r.x = x;

@@ -175,7 +175,7 @@ int kmain(multiboot_info_t * mb_info) {
 
     // Terminal
     window_t * red_w = window_create(get_super_window(), 20, 300, 750, 450, WINDOW_NORMAL, "window_black");
-    window_add_headline(red_w, "black window");
+    window_add_title_bar(red_w);
     window_add_close_button(red_w);
     window_add_minimize_button(red_w);
     window_add_maximize_button(red_w);
@@ -188,7 +188,7 @@ int kmain(multiboot_info_t * mb_info) {
 
     // File Browser
     window_t * green_w = window_create(get_super_window(), 100, 100, 400, 400, WINDOW_NORMAL, "window_classic");
-    window_add_headline(green_w, "classic");
+    window_add_title_bar(green_w);
     qemu_printf("Adding close buttons\n");
     window_add_close_button(green_w);
     qemu_printf("Adding minimize buttons\n");
@@ -204,7 +204,7 @@ int kmain(multiboot_info_t * mb_info) {
 #if 0
     // Web browser
     window_t * blue_w =window_create(get_super_window(), 600, 100, 400, 400, WINDOW_NORMAL, "window_blue");
-    window_add_headline(blue_w, "classic");
+    window_add_title_bar(blue_w);
     window_add_close_button(blue_w);
     //window_add_minimize_button(blue_w);
     canvas_t canvas_blue = canvas_create(blue_w->width, blue_w->height, blue_w->frame_buffer);
