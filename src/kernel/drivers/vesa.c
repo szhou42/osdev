@@ -1,4 +1,5 @@
 #include <vesa.h>
+#include <pic.h>
 
 uint32_t curr_mode;
 
@@ -92,14 +93,22 @@ uint32_t vesa_find_mode(uint32_t width, uint32_t height, uint32_t bpp) {
     return 0;
 }
 
+uint32_t get_eflags() {
+    return;
+}
 void vesa_init() {
     bios32_init();
+    uint32_t eflags = 0;
     //uint32_t ret = vesa_find_mode(1024, 768, 32);
     //if(!ret)
     //    PANIC(":( Couldn't find the vesa mode\n");
     // Note!!! We're supposed to search to get the mode 0x144 ! But I've encounered some bugs in the vesa_find_mode() which cause the os the crash from time to time
     // Let's put that away, keep moving and fix it later :)
     vesa_set_mode(0x144 | 0x4000);
+    //qemu_printf("Will there be any more irqs? eflags = %08x\n", eflags);
+    //write_serial('w');
+    //asm volatile("int $0x20");
+    irq_ack(0x28);
     void * t = vesa_get_lfb();
     allocate_region(kpage_dir, (uint32_t)t, (uint32_t)(t + 1024*768*4), 1,1,1);
 }

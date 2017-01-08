@@ -11,7 +11,7 @@ void final_exception_handler(register_t reg);
 // Defined in interrupt.c
 extern isr_t interrupt_handlers[256];
 void register_interrupt_handler(int num, isr_t handler);
-void final_irq_handler(register_t  reg);
+void final_irq_handler(register_t  * reg);
 
 // Defined in exception_helper.asm
 extern void exception0();

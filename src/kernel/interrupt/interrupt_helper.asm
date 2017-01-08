@@ -39,7 +39,9 @@ temp_irq_handler:
     mov fs, ax
     mov gs, ax
 
+    push esp
     call final_irq_handler
+    pop esp
 
     pop ebx                         ; restore original data segment
     mov ds, bx

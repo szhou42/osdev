@@ -39,7 +39,7 @@ void ata_handler(register_t * reg) {
     inportb(primary_master.status);
     inportb(primary_master.BMR_STATUS);
     outportb(primary_master.BMR_COMMAND, BMR_COMMAND_DMA_STOP);
-    irq_ack(14);
+    //irq_ack(14);
 }
 
 

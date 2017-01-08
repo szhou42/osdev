@@ -54,6 +54,7 @@ int right_button_up() {
  * */
 void mouse_handler(register_t * regs)
 {
+    qemu_printf("Mouse interrupt fired\n");
     static uint8_t mouse_cycle = 0;
     static char mouse_byte[3];
     winmsg_t msg;
@@ -185,13 +186,16 @@ void mouse_handler(register_t * regs)
 void mouse_write(uint8_t a_write) //unsigned char
 {
     //Tell the mouse we are sending a command
+    mouse_wait(1);
     outportb(0x64, 0xD4);
+    mouse_wait(1);
     //Finally write
     outportb(0x60, a_write);
 }
 
 uint8_t mouse_read()
 {
+    mouse_wait(0);
     return inportb(0x60);
 }
 
@@ -210,6 +214,27 @@ void draw_mouse() {
         draw_rect_clip_pixels(get_screen_canvas(), &current_mouse_region, CURSOR_WIDTH);
     }
 #endif
+}
+
+void mouse_wait(uint8_t a_type) {
+    uint32_t _time_out=100000; //unsigned int
+    if(a_type==0) {
+        while(_time_out--) {
+            if((inportb(0x64) & 1)==1)
+            {
+                return;
+            }
+        }
+        return;
+    }
+    else {
+        while(_time_out--) {
+            if((inportb(0x64) & 2)==0) {
+                return;
+            }
+        }
+        return;
+    }
 }
 
 /*
@@ -244,12 +269,17 @@ void mouse_init() {
 
     uint8_t _status;  //unsigned char
     //Enable the auxiliary mouse device
+    mouse_wait(1);
     outportb(0x64, 0xA8);
 
     //Enable the interrupts
+    mouse_wait(1);
     outportb(0x64, 0x20);
+    mouse_wait(0);
     _status=(inportb(0x60) | 2);
+    mouse_wait(1);
     outportb(0x64, 0x60);
+    mouse_wait(1);
     outportb(0x60, _status);
 
     // Tell the mouse to use default settings
@@ -261,5 +291,5 @@ void mouse_init() {
     mouse_read();  //Acknowledge
 
     // Setup the mouse handler
-    register_interrupt_handler(IRQ_BASE+12, mouse_handler);
+    register_interrupt_handler(IRQ_BASE + 12, mouse_handler);
 }

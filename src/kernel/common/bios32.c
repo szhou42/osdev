@@ -1,4 +1,5 @@
 #include <bios32.h>
+#include <serial.h>
 
 idt_ptr_t real_idt_ptr;
 idt_ptr_t real_gdt_ptr;

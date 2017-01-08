@@ -109,7 +109,7 @@ void window_message_handler(winmsg_t * msg) {
                             move_window(moving_window, moving_window->x + msg->change_x, moving_window->y + msg->change_y);
                         }
                         else {
-                            qemu_printf("%s Starts moving, cursor at (%d, %d), (%d, %d)\n", w->name, cursor_x, cursor_y, msg->cursor_x, msg->cursor_y);
+                            //qemu_printf("%s Starts moving, cursor at (%d, %d), (%d, %d)\n", w->name, cursor_x, cursor_y, msg->cursor_x, msg->cursor_y);
                             last_mouse_position.x = cursor_x;
                             last_mouse_position.y = cursor_y;
                             move_window(w, w->x + msg->change_x, w->y + msg->change_y);
@@ -120,7 +120,7 @@ void window_message_handler(winmsg_t * msg) {
                 else {
                     // If w is desktop bar, return
                     if(w->type != WINDOW_NORMAL) return;
-                    qemu_printf("mouse over [%s]\n", w->name);
+                    //qemu_printf("mouse over [%s]\n", w->name);
                     // Set button highlights
                     // Close button
                     r.x = 7; r.height= 17;
