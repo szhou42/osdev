@@ -54,14 +54,22 @@ typedef struct pcb {
 
 extern list_t * process_list;
 extern pcb_t * current_process;
-extern register_t * saved_context;
+extern register_t saved_context;
 
 
 
 pid_t allocate_pid();
+
 void process_init();
+
 void user_regs_switch(context_t * regs2);
+
 void kernel_regs_switch(context_t * regs2);
+
 void schedule();
+
 void create_process(char * filename);
+
+void create_process_from_routine(void * routine, char * name);
+
 #endif

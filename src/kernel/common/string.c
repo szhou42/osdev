@@ -3,7 +3,7 @@
 #include <stdarg.h>
 #include <printf.h>
 
-#define FAST_MEMCPY 1
+#define FAST_MEMCPY 0
 void fast_memcpy(char * dst, char * src, uint32_t n);
 /*
  * Compare two buffer, return 1 if they're the same
