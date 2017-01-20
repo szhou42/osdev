@@ -131,8 +131,9 @@ int kmain(multiboot_info_t * mb_info) {
     char * str = "whats up udp!";
     //ethernet_send_packet(mac_addr, str, strlen(str), 0x0021);
     //ip_send_packet(ip_addr, str, strlen(str));
-    //udp_send_packet(ip_addr, 1234, 1234, str, strlen(str));
     dhcp_discover();
+    while(gethostaddr(mac_addr) == 0);
+    udp_send_packet(ip_addr, 1234, 1153, str, strlen(str));
     for(;;);
 #endif
 

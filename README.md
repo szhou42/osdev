@@ -1,6 +1,6 @@
 # simpleos
 A toy operating system based on <a href = "http://www.osdever.net/bkerndev/Docs/title.htm"> Brans' Kernel Development Tutorial</a>  
-The major goals of this project is to build a operating system that has:  
+Current goals of this project is to build operating system with minimal support for the following:  
 1. Memory manager(from virtual page allocation to kmalloc) [Done]  
 2. File system(Hard disk driver, Support ext2, and virtual filesystem) [Done]  
 3. Graphical User Interface  
@@ -92,10 +92,10 @@ And then choose one of the following simulator to boot simpleos. QEMU is more re
 
 #### Network protocols  
 &#160; &#160; &#160; &#160;0 Send/Recv raw packets  [✔]  
-&#160; &#160; &#160; &#160;1 IP                     []  
-&#160; &#160; &#160; &#160;2 UDP                    []  
+&#160; &#160; &#160; &#160;1 IP                     [✔]  
+&#160; &#160; &#160; &#160;2 UDP                    [✔]  
 &#160; &#160; &#160; &#160;3 ARP                    [✔]  
-&#160; &#160; &#160; &#160;4 DHCP                   []  
+&#160; &#160; &#160; &#160;4 DHCP                   [✔]  
 &#160; &#160; &#160; &#160;5 TCP                    []  
 &#160; &#160; &#160; &#160;6 HTTP                   []  
 
