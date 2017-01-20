@@ -31,7 +31,6 @@ void pic_init() {
  * Tell PIC interrupt is handled
  * */
 void irq_ack(uint8_t irq) {
-    qemu_printf("Acking %d\n", irq);
     if(irq >= 0x28)
         outportb(PIC2, PIC_EOI);
     outportb(PIC1, PIC_EOI);

@@ -4,7 +4,7 @@
 #include <isr.h>
 #include <kheap.h>
 #include <string.h>
-#include <printf.h>
+#include <serial.h>
 
 pci_dev_t ata_device;
 
@@ -282,14 +282,14 @@ void ata_device_detect(ata_dev_t * dev, int primary) {
 
     outportb(dev->command, COMMAND_IDENTIFY);
     if(!inportb(dev->status)) {
-        printf("ata_detect_device: device does not exist\n");
+        qemu_printf("ata_detect_device: device does not exist\n");
         return;
     }
 
     uint8_t lba_lo = inportb(dev->lba_lo);
     uint8_t lba_hi = inportb(dev->lba_high);
     if(lba_lo != 0 || lba_hi != 0) {
-        printf("ata_detect_device: not ata device\n");
+        qemu_printf("ata_detect_device: not ata device\n");
         return;
     }
     // Polling
@@ -300,7 +300,7 @@ void ata_device_detect(ata_dev_t * dev, int primary) {
         err = inportb(dev->status) & STATUS_ERR;
     }
     if(err) {
-        printf("ata_detect_device: err when polling\n");
+        qemu_printf("ata_detect_device: err when polling\n");
         return;
     }
 

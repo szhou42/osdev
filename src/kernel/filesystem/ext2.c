@@ -1,7 +1,7 @@
 #include <ext2.h>
 #include <system.h>
 #include <string.h>
-#include <printf.h>
+#include <serial.h>
 
 uint32_t ext2_file_size(vfs_node_t * node) {
     ext2_fs_t * ext2fs = node->device;
@@ -275,7 +275,7 @@ void ext2_create_entry(vfs_node_t * parent, char * entry_name, uint32_t entry_in
         if(curr_dir->name_len == entry_name_len) {
             memcpy(check, curr_dir->name, entry_name_len);
             if(curr_dir->inode != 0 && !strcmp(entry_name, check)) {
-                printf("Entry by the same name %s already exist\n", check);
+                qemu_printf("Entry by the same name %s already exist\n", check);
                 return;
             }
         }

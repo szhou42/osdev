@@ -1,4 +1,5 @@
 #include <process.h>
+#include <serial.h>
 
 
 list_t * process_list;
@@ -51,7 +52,7 @@ void context_switch(register_t * p_regs, context_t * n_regs) {
  * This function is registered to the timer wakeup list, so it will be wakeup every 2/18 seconds
  * */
 void schedule() {
-    printf("Process Scheduler running\n");
+    qemu_printf("Process Scheduler running\n");
     pcb_t * next;
     if(!list_size(process_list)) return;
 

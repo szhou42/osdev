@@ -2,7 +2,7 @@
 #include <paging.h>
 #include <string.h>
 #include <math.h>
-#include <printf.h>
+#include <serial.h>
 #include <pmm.h>
 #include <kheap.h>
 #include <vga.h>
@@ -28,12 +28,12 @@ void * virtual2phys(page_directory_t * dir, void * virtual_addr) {
     }
     uint32_t page_dir_idx = PAGEDIR_INDEX(virtual_addr), page_tbl_idx = PAGETBL_INDEX(virtual_addr), page_frame_offset = PAGEFRAME_INDEX(virtual_addr);
     if(!dir->ref_tables[page_dir_idx]) {
-        printf("virtual2phys: page dir entry does not exist\n");
+        qemu_printf("virtual2phys: page dir entry does not exist\n");
         return NULL;
     }
     page_table_t * table = dir->ref_tables[page_dir_idx];
     if(!table->pages[page_tbl_idx].present) {
-        printf("virtual2phys: page table entry does not exist\n");
+        qemu_printf("virtual2phys: page table entry does not exist\n");
         return NULL;
     }
     uint32_t t = table->pages[page_tbl_idx].frame;
@@ -76,7 +76,7 @@ void allocate_region(page_directory_t * dir, uint32_t start_va, uint32_t end_va,
 void allocate_page(page_directory_t * dir, uint32_t virtual_addr, uint32_t frame, int is_kernel, int is_writable) {
     page_table_t * table = NULL;
     if(!dir) {
-        printf("allocate_page: page directory is empty\n");
+        qemu_printf("allocate_page: page directory is empty\n");
         return;
     }
     // Ask pmm for a physical block, and assign the physical block to the virtual address,(left shift 12 bits for storing permission info)
@@ -142,12 +142,12 @@ void free_page(page_directory_t * dir, uint32_t virtual_addr, int free) {
     if(dir == TEMP_PAGE_DIRECTORY) return;
     uint32_t page_dir_idx = PAGEDIR_INDEX(virtual_addr), page_tbl_idx = PAGETBL_INDEX(virtual_addr);
     if(!dir->ref_tables[page_dir_idx]) {
-        printf("free_page: page dir entry does not exist\n");
+        qemu_printf("free_page: page dir entry does not exist\n");
         return;
     }
     page_table_t * table = dir->ref_tables[page_dir_idx];
     if(!table->pages[page_tbl_idx].present) {
-        printf("free_page: page table entry does not exist\n");
+        qemu_printf("free_page: page table entry does not exist\n");
         return;
     }
     // The table entry is found !
@@ -342,7 +342,7 @@ page_table_t * copy_page_table(page_directory_t * src_page_dir, page_directory_t
 void page_fault_handler(register_t * reg) {
     asm volatile("sti");
     set_curr_color(LIGHT_RED);
-    printf("Page fault:\n");
+    qemu_printf("Page fault:\n");
 
     // Gather fault info and print to screen
     uint32_t faulting_addr;
@@ -353,13 +353,13 @@ void page_fault_handler(register_t * reg) {
     uint32_t reserved = reg->err_code & ERR_RESERVED;
     uint32_t inst_fetch = reg->err_code & ERR_INST;
 
-    printf("Possible causes: [ ");
-    if(!present) printf("Page not present ");
-    if(rw) printf("Page is read only ");
-    if(user) printf("Page is read only ");
-    if(reserved) printf("Overwrote reserved bits ");
-    if(inst_fetch) printf("Instruction fetch ");
-    printf("]\n");
+    qemu_printf("Possible causes: [ ");
+    if(!present) qemu_printf("Page not present ");
+    if(rw) qemu_printf("Page is read only ");
+    if(user) qemu_printf("Page is read only ");
+    if(reserved) qemu_printf("Overwrote reserved bits ");
+    if(inst_fetch) qemu_printf("Instruction fetch ");
+    qemu_printf("]\n");
 
     print_reg(reg);
 }

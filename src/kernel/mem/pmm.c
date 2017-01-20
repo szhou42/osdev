@@ -1,7 +1,7 @@
 #include <pmm.h>
 #include <system.h>
 #include <string.h>
-#include <printf.h>
+#include <serial.h>
 
 uint8_t * bitmap = (uint8_t*)(&end);
 uint8_t * mem_start;
@@ -24,15 +24,15 @@ void pmm_init(uint32_t mem_size) {
     // Start of all blcoks
     mem_start = (uint8_t*)BLOCK_ALIGN(((uint32_t)(bitmap + bitmap_size)));
 #if 0
-    printf("mem size:     %u mb\n", mem_size / (1024 * 1024));
-    printf("total_blocks: %u\n", total_blocks);
-    printf("bitmap addr:  0x%p\n", bitmap);
-    printf("bitmap_size:  %u\n", bitmap_size);
-    printf("mem_start:    0x%p\n", mem_start);
+    qemu_printf("mem size:     %u mb\n", mem_size / (1024 * 1024));
+    qemu_printf("total_blocks: %u\n", total_blocks);
+    qemu_printf("bitmap addr:  0x%p\n", bitmap);
+    qemu_printf("bitmap_size:  %u\n", bitmap_size);
+    qemu_printf("mem_start:    0x%p\n", mem_start);
 
     for(int i = 0; i < bitmap_size; i++) {
         if(bitmap[i] != 0) {
-            printf("bitmap is not all empty, fix it!\n");
+            qemu_printf("bitmap is not all empty, fix it!\n");
         }
     }
 #endif
@@ -61,31 +61,31 @@ uint32_t first_free_block() {
         if(!ISSET(i))
             return i;
     }
-    printf("pmm: Running out of free blocks!\n");
+    qemu_printf("pmm: Running out of free blocks!\n");
     return (uint32_t) -1;
 }
 
 void simple_test() {
 
-    printf("\n");
+    qemu_printf("\n");
     uint32_t t1 = first_free_block();
-    printf("first free block is %u\n", t1);
+    qemu_printf("first free block is %u\n", t1);
 
     void * ret = (void*)allocate_block();
-    printf("first allocated block addr 0x%p\n", ret);
+    qemu_printf("first allocated block addr 0x%p\n", ret);
 
 
     uint32_t t2 = first_free_block();
-    printf("second free block is %u\n", t2);
+    qemu_printf("second free block is %u\n", t2);
 
     ret = (void*)allocate_block();
-    printf("second allocated block addr 0x%p\n", ret);
+    qemu_printf("second allocated block addr 0x%p\n", ret);
 
     free_block(t2);
     t2 = first_free_block();
-    printf("third free block(after freeing the second) is %u\n", t2);
+    qemu_printf("third free block(after freeing the second) is %u\n", t2);
 
     free_block(t1);
     t1 = first_free_block();
-    printf("third free block(after freeing the first) is %u\n", t1);
+    qemu_printf("third free block(after freeing the first) is %u\n", t1);
 }

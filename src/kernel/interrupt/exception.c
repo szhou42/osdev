@@ -1,6 +1,6 @@
 #include <system.h>
 #include <isr.h>
-#include <printf.h>
+#include <serial.h>
 #include <vga.h>
 
 
@@ -44,7 +44,7 @@ char *exception_messages[32] =
 void final_exception_handler(register_t reg) {
     if(reg.int_no < 32) {
         set_curr_color(LIGHT_RED);
-        printf("EXCEPTION: %s (err code is %x)\n", exception_messages[reg.int_no], reg.err_code);
+        qemu_printf("EXCEPTION: %s (err code is %x)\n", exception_messages[reg.int_no], reg.err_code);
         print_reg(&reg);
         set_curr_color(WHITE);
         for(;;);

@@ -1,8 +1,11 @@
 #include <ip.h>
 #include <arp.h>
 #include <printf.h>
+#include <serial.h>
 #include <ethernet.h>
 #include <network_utils.h>
+#include <dhcp.h>
+#include <udp.h>
 
 uint8_t my_ip[] = {10, 0, 2, 14};
 uint8_t test_target_ip[] = {10, 0, 2, 15};
@@ -51,8 +54,9 @@ void ip_send_packet(uint8_t * dst_ip, void * data, int len) {
     // Once we test the ip packeting sending works, we'll replace it with a packet corresponding to some protocol
     packet->protocol = PROTOCOL_UDP;
 
+    gethostaddr(my_ip);
     memcpy(packet->src_ip, my_ip, 4);
-    memcpy(packet->dst_ip, test_target_ip, 4);
+    memcpy(packet->dst_ip, dst_ip, 4);
 
     void * packet_data = (void*)packet + packet->ihl * 4;
     memcpy(packet_data, data, len);
@@ -87,7 +91,7 @@ void ip_send_packet(uint8_t * dst_ip, void * data, int len) {
             arp_send_packet(zero_hardware_addr, dst_ip);
         }
     }
-    printf("IP Packet Sent...(checksum: %x)", packet->header_checksum);
+    qemu_printf("IP Packet Sent...(checksum: %x)\n", packet->header_checksum);
     // Got the mac address! Now send an ethernet packet
     ethernet_send_packet(dst_hardware_addr, packet, htons(packet->length), ETHERNET_TYPE_IP);
     xxd(packet, ntohs(packet->length));
@@ -99,12 +103,11 @@ void ip_handle_packet(ip_packet_t * packet) {
     *((uint8_t*)(&packet->version_ihl_ptr)) = ntohb(*((uint8_t*)(&packet->version_ihl_ptr)), 4);
     *((uint8_t*)(packet->flags_fragment_ptr)) = ntohb(*((uint8_t*)(packet->flags_fragment_ptr)), 3);
 
-    printf("Receive: the whole ip packet \n");
+    qemu_printf("Receive: the whole ip packet \n");
     xxd(packet, ntohs(packet->length));
     // Now, the ip packet handler simply dumps ip header info and the data with xxd and display on screen
     // Dump source ip, data, checksum
     char src_ip[20];
-
 
     if(packet->version == IP_IPV4) {
         get_ip_str(src_ip, packet->src_ip);
@@ -112,8 +115,15 @@ void ip_handle_packet(ip_packet_t * packet) {
         void * data_ptr = (void*)packet + packet->ihl * 4;
         int data_len = ntohs(packet->length) - sizeof(ip_packet_t);
 
-        printf("src: %s, data dump: \n", src_ip);
+        qemu_printf("src: %s, data dump: \n", src_ip);
         xxd(data_ptr, data_len);
+
+        // If this is a UDP packet
+        if(packet->protocol == PROTOCOL_UDP) {
+            udp_handle_packet(data_ptr);
+        }
+
+
         // What ? that's it ? that's ip packet handling ??
         // not really... u need to handle ip fragmentation... but let's make sure we can handle one ip packet first
     }

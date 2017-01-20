@@ -1,4 +1,5 @@
 #include <string.h>
+#include <serial.h>
 #include <printf.h>
 #include <paging.h>
 #include <kheap.h>
@@ -173,8 +174,8 @@ uint32_t getRealSize(uint32_t size) {
    Print the heap visually, for debug.
    */
 void db_print() {
-    if(!head) {printf("your heap is empty now\n");return;}
-    //printf("HEAP:\n");
+    if(!head) {qemu_printf("your heap is empty now\n");return;}
+    //qemu_printf("HEAP:\n");
     uint32_t total = 0;
     uint32_t total_overhead = 0;
     struct Block * curr = head;
@@ -183,24 +184,24 @@ void db_print() {
         char c = 'A';
         if(isFree(curr)) c = 'F';
         uint32_t a = getRealSize(curr->size);
-        printf("| %u |.%c.| %u | ", a, c, a);
+        qemu_printf("| %u |.%c.| %u | ", a, c, a);
         total = total + getRealSize(curr->size);
         total_overhead = total_overhead + OVERHEAD;
         if(isEnd(curr)) break;
         void * ptr = (void*)curr + OVERHEAD + getRealSize(curr->size);
         curr = ptr;
     }
-    printf("\n total usable bytes: %d", total);
-    printf("\n total overhead bytes: %d", total_overhead);
-    printf("\n total bytes: %d", total + total_overhead);
-    printf("\nfreelist: ");
+    qemu_printf("\n total usable bytes: %d", total);
+    qemu_printf("\n total overhead bytes: %d", total_overhead);
+    qemu_printf("\n total bytes: %d", total + total_overhead);
+    qemu_printf("\nfreelist: ");
 
     struct Block * ite = freelist;
     while(ite) {
-        printf("(%p)->", ite);
+        qemu_printf("(%p)->", ite);
         ite = ite->next;
     }
-    printf("\n\n");
+    qemu_printf("\n\n");
     return;
 }
 

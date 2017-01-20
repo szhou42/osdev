@@ -98,10 +98,8 @@ void mouse_handler(register_t * regs)
 
             // Update mouse position
             // Transform delta values using some sort of log function
-            int scale_x = abs(mouse_byte[1]) / 5 + 2;
-            int scale_y = abs(mouse_byte[2]) / 5 + 2;
-            mouse_x = mouse_x + scale_x * sign(mouse_byte[1]);
-            mouse_y = mouse_y - scale_y * sign(mouse_byte[2]);
+            mouse_x = mouse_x + (mouse_byte[1]);
+            mouse_y = mouse_y - (mouse_byte[2]);
 
             // Adjust mouse position
             if(mouse_x < 0)

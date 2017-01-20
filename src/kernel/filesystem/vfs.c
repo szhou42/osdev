@@ -2,7 +2,7 @@
 #include <ext2.h>
 #include <kheap.h>
 #include <string.h>
-#include <printf.h>
+#include <serial.h>
 #include <my_errno.h>
 
 gtree_t * vfs_tree;
@@ -23,19 +23,19 @@ void vfs_db_listdir(char * name) {
     // Open the VFS node, call its list dir function
     vfs_node_t * n = file_open(name, 0);
     if(!n) {
-        printf("Could not list a directory that does not exist\n");
+        qemu_printf("Could not list a directory that does not exist\n");
         return;
     }
     if(!n->listdir) return;
     char ** files = n->listdir(n);
     char ** save = files;
     while(*files) {
-        printf("%s ", *files);
+        qemu_printf("%s ", *files);
         kfree(*files);
         files++;
     }
     kfree(save);
-    printf("\n");
+    qemu_printf("\n");
 }
 /*
  * Recuersively print the vfs tree and show the device mounted on each node
@@ -62,11 +62,11 @@ void print_vfstree_recur(gtreenode_t * node, int parent_offset) {
     char * curr = tmp + strlen(tmp);
     struct vfs_entry * fnode = (struct vfs_entry *)node->value;
     if (fnode->file) {
-        sprintf(curr, "%s(0x%x, %s)", fnode->name, (unsigned int)fnode->file, fnode->file->name);
+        qemu_printf(curr, "%s(0x%x, %s)", fnode->name, (unsigned int)fnode->file, fnode->file->name);
     } else {
-        sprintf(curr, "%s(empty)", fnode->name);
+        qemu_printf(curr, "%s(empty)", fnode->name);
     }
-    printf("%s\n", tmp);
+    qemu_printf("%s\n", tmp);
     len = strlen(fnode->name);
     free(tmp);
     foreach(child, node->children) {
@@ -399,7 +399,7 @@ void vfs_mount_recur(char * path, gtreenode_t * subroot, vfs_node_t * fs_obj) {
         // return the subroot, it's where u should mount!
         struct vfs_entry * ent = (struct vfs_entry*)subroot->value;
         if(ent->file) {
-            printf("The path is already mounted, plz unmount before mounting again\n");
+            qemu_printf("The path is already mounted, plz unmount before mounting again\n");
             return;
         }
         if(!strcmp(ent->name, "/")) vfs_root = fs_obj; // Keep a shortcut for root node
@@ -434,7 +434,7 @@ void vfs_mount(char * path, vfs_node_t * fs_obj) {
     if(path[0] == '/' && strlen(path) == 1) {
         struct vfs_entry * ent = (struct vfs_entry*)vfs_tree->root->value;
         if(ent->file) {
-            printf("The path is already mounted, plz unmount before mounting again\n");
+            qemu_printf("The path is already mounted, plz unmount before mounting again\n");
             return;
         }
         vfs_root = fs_obj; // Keep a shortcut for root node

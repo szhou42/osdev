@@ -1,4 +1,5 @@
 #include <elf_loader.h>
+#include <serial.h>
 
 int valid_elf(elf_header_t * elf_head) {
     if(elf_head->e_ident[EI_MAG0] != ELFMAG0)
@@ -41,7 +42,7 @@ void do_elf_load() {
 
     // Check elf validity
     if(!valid_elf(head)) {
-        printf("Invalid/Unsupported elf executable %s\n", filename);
+        qemu_printf("Invalid/Unsupported elf executable %s\n", filename);
         return;
     }
 

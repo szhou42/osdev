@@ -29,6 +29,8 @@
 #include <rtl8139.h>
 #include <ethernet.h>
 #include <ip.h>
+#include <udp.h>
+#include <dhcp.h>
 #include <serial.h>
 #include <blend.h>
 
@@ -38,8 +40,8 @@ extern ata_dev_t primary_master;
 extern datetime_t current_datetime;
 
 #define MSIZE 48 * M
-#define GUI_MODE 1
-#define NETWORK_MODE 0
+#define GUI_MODE 0
+#define NETWORK_MODE 1
 
 void test_bios32() {
     register16_t reg = {0};
@@ -57,20 +59,6 @@ int kmain(multiboot_info_t * mb_info) {
 
     video_init();
     qemu_printf("%s\n", simpleos_logo);
-
-    uint32_t ret = sse_available();
-    qemu_printf("Is sse available? (%d)\n", ret);
-    if(ret)
-        sse_init();
-
-    char array1[1024];
-    char array2[1024];
-    array1[320] = 'h';
-    array1[321] = 'e';
-    array1[322] = 'l';
-    array1[323] = 'l';
-    array1[324] = 'o';
-    memcpy(array2, array1, 1024);
 
     // Initialize everything (green)
     set_curr_color(LIGHT_GREEN);
@@ -124,6 +112,7 @@ int kmain(multiboot_info_t * mb_info) {
 #if NETWORK_MODE
     qemu_printf("Initializing network driver...\n");
     rtl8139_init();
+    arp_init();
 
     uint8_t mac_addr[6];
     mac_addr[0] = 0xAA;
@@ -139,10 +128,11 @@ int kmain(multiboot_info_t * mb_info) {
     ip_addr[1] = 0;
     ip_addr[2] = 2;
     ip_addr[3] = 15;
-    char * str = "hello_ip";
+    char * str = "whats up udp!";
     //ethernet_send_packet(mac_addr, str, strlen(str), 0x0021);
-    //qemu_printf("Packet sent\n");
-    ip_send_packet(ip_addr, str, strlen(str));
+    //ip_send_packet(ip_addr, str, strlen(str));
+    //udp_send_packet(ip_addr, 1234, 1234, str, strlen(str));
+    dhcp_discover();
     for(;;);
 #endif
 
