@@ -43,56 +43,25 @@ extern datetime_t current_datetime;
 #define GUI_MODE 0
 #define NETWORK_MODE 1
 
+void test_bios32() {
+    register16_t reg = {0};
+    register16_t reg2 = {0};
+    reg.ax = 0x4f01;
+    reg.di = 0x9000;
+    bios32_service(0x10, &reg, &reg2);
+    print_reg16(&reg2);
+}
+
 uint32_t sse_available();
 void sse_init();
-
-uint32_t len = 0;
-
-void routineC() {
-    for(int i = 0; i < 1000; i++) {
-
-    }
-}
-
-void routineA() {
-    for(int i = 0; i < 1000; i++) {
-        if(i == 800) {
-            i = 0;
-            len = strlen("szhou42 szhou42 szhou42 szhou42");
-        }
-    }
-    for(;;);
-}
-
-void routineB() {
-    for(int i = 0; i < 1000; i++) {
-        if(i == 800) {
-            i = 0;
-            len = strlen("szhou42 szhou42 szhou42 szhou42");
-        }
-    }
-    for(;;);
-}
-
-void kernel_thread() {
-    create_process_from_routine(routineA, "routineA");
-    qemu_printf("Routine A created\n");
-    create_process_from_routine(routineB, "routineB");
-    qemu_printf("Routine B created\n");
-    for(;;);
-}
 
 int kmain(multiboot_info_t * mb_info) {
 
     video_init();
     qemu_printf("%s\n", simpleos_logo);
 
-<<<<<<< HEAD
     // Initialize everything (green)
     set_curr_color(LIGHT_GREEN);
-=======
-    // Initialize everything
->>>>>>> f4f541aebfcdff2a7e8a924adbdf66a39f26bd04
     qemu_printf("Initializing video(text mode 80 * 25)...\n");
 
     qemu_printf("Initializing gdt, idt and tss...\n");
@@ -112,18 +81,26 @@ int kmain(multiboot_info_t * mb_info) {
     qemu_printf("Initializing timer...\n");
     timer_init();
 
-    process_init();
+    qemu_printf("Initializing pci...\n");
+    pci_init();
 
-    qemu_printf("Initializing system calls and enter...\n");
-    syscall_init();
+    qemu_printf("Initializing keyboard...\n");
+    keyboard_init();
 
-    uint32_t esp;
-    asm volatile("mov %%esp, %0" : "=r"(esp));
-    tss_set_stack(0x10, esp);
+    qemu_printf("Initializing vfs, ext2 and ata/dma...\n");
+    vfs_init();
+    ata_init();
+    ext2_init("/dev/hda", "/");
 
-    create_process_from_routine(kernel_thread, "kernel");
 
-<<<<<<< HEAD
+    qemu_printf("Initializing real time clock...\n");
+    rtc_init();
+    qemu_printf("Current date and time: %s\n", datetime_to_str(&current_datetime));
+    //process_init();
+
+
+    set_curr_color(WHITE);
+
     //qemu_printf("Initializing system calls and enter usermode...\n");
     //syscall_init();
     //vfs_db_listdir("/");
@@ -248,8 +225,6 @@ int kmain(multiboot_info_t * mb_info) {
     set_curr_color(LIGHT_RED);
 
     qemu_printf("\nDone!\n");
-=======
->>>>>>> f4f541aebfcdff2a7e8a924adbdf66a39f26bd04
     for(;;);
     return 0;
 }

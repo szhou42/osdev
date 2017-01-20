@@ -107,9 +107,8 @@ void vesa_init() {
     vesa_set_mode(0x144 | 0x4000);
     //qemu_printf("Will there be any more irqs? eflags = %08x\n", eflags);
     //write_serial('w');
-    // Something about interrupts break when setting vesa mode(PIC stopped sending interrupts), manually triggering an interrupt will fix this.
-    asm volatile("int $0x20");
-    //irq_ack(0x28);
+    //asm volatile("int $0x20");
+    irq_ack(0x28);
     void * t = vesa_get_lfb();
     allocate_region(kpage_dir, (uint32_t)t, (uint32_t)(t + 1024*768*4), 1,1,1);
 }
