@@ -33,6 +33,7 @@
 #include <dhcp.h>
 #include <serial.h>
 #include <blend.h>
+#include <spinlock.h>
 
 
 extern uint8_t * bitmap;
@@ -44,20 +45,33 @@ extern datetime_t current_datetime;
 #define NETWORK_MODE 0
 
 void user_process2() {
+    uint32_t lock = 0;
     while(1) {
         for(int i = 0; i < 10000; i++) {
-            for(int j= 0; j < 20000; j++) {
+            for(int j= 0; j < 2000; j++) {
 
             }
         }
-        //qemu_printf("hi there2\n");
+        spinlock_lock(&lock);
+        qemu_printf("hi there2\n");
+        spinlock_unlock(&lock);
     }
 }
 
 void user_process() {
-    //create_process_from_routine(user_process2, "user process2");
+    uint32_t lock = 0;
+    for(int i = 0; i < 20; i++) {
+        create_process_from_routine(user_process2, "user process2");
+    }
     while(1) {
-        //qemu_printf("hi there\n");
+        for(int i = 0; i < 10000; i++) {
+            for(int j= 0; j < 2000; j++) {
+
+            }
+        }
+        spinlock_lock(&lock);
+        qemu_printf("hi there\n");
+        spinlock_unlock(&lock);
     }
 }
 
@@ -72,7 +86,6 @@ int kmain(multiboot_info_t * mb_info) {
     uint32_t esp;
     asm volatile("mov %%esp, %0" : "=r"(esp));
     tss_set_stack(0x10, esp);
-    qemu_printf("The kernel stack is 0x%08x\n", esp);
 
     // Start the first process
     create_process_from_routine(user_process, "user process");

@@ -55,7 +55,9 @@ void context_switch(register_t * p_regs, context_t * n_regs) {
  * This function is registered to the timer wakeup list, so it will be wakeup every 2/18 seconds
  * */
 void schedule() {
+#if DEBUG_MULTITASK
     qemu_printf("Process Scheduler running\n");
+#endif
     pcb_t * next;
     if(!list_size(process_list)) return;
 
@@ -84,7 +86,9 @@ void schedule() {
     current_process = next;
     if(current_process == NULL)
         PANIC("no process left, did you exit all user process ??? Never exit the userspace init process!!!!");
+#if DEBUG_MULTITASK
     qemu_printf("Scheduler chose %s to run at 0x%08x\n", current_process->filename, current_process->regs.eip);
+#endif
     context_switch(&saved_context, &next->regs);
 }
 

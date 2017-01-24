@@ -13,6 +13,8 @@
 #include <string.h>
 #include <elf_loader.h>
 
+#define DEBUG_MULTITASK 0
+
 #define SCHED_TOLERANCE 5
 
 // All possible process state, copied from sched.h

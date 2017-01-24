@@ -59,7 +59,9 @@ void register_wakeup_call(wakeup_callback func, double sec) {
  * timer irq handler
  * */
 void timer_handler(register_t * reg) {
+#if DEBUG_MULTITASK
     qemu_printf("Timer handler triggered...\n");
+#endif
     jiffies++;
     memcpy(&saved_context, reg, sizeof(register_t));
     foreach(t, wakeup_list) {
