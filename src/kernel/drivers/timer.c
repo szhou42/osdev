@@ -59,19 +59,19 @@ void register_wakeup_call(wakeup_callback func, double sec) {
  * timer irq handler
  * */
 void timer_handler(register_t * reg) {
+    qemu_printf("Timer handler triggered...\n");
     jiffies++;
-    saved_context = reg;
+    memcpy(&saved_context, reg, sizeof(register_t));
     foreach(t, wakeup_list) {
          wakeup_info_t * w = t->val;
-         if(jiffies == w->jiffies) {
-            w->jiffies += w->sec * hz;
-            w->func();
-         }
+         w->func();
     }
+    /*
     if(jiffies % 1080 == 0) {
         window_t * w = get_desktop_bar();
         canvas_t canvas_bar = canvas_create(w->width, w->height, w->frame_buffer);
         set_font_color(VESA_COLOR_BLACK+1);
         draw_text(&canvas_bar, get_current_datetime_str(), 1, 115);
     }
+    */
 }

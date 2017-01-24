@@ -4,8 +4,9 @@
 #include <isr.h>
 #include <vfs.h>
 #include <process.h>
+#include <serial.h>
 
-#define NUM_SYSCALLS 3
+#define NUM_SYSCALLS 5
 
 extern void * syscall_table[NUM_SYSCALLS];
 

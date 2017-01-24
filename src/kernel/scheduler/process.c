@@ -1,4 +1,5 @@
 #include <process.h>
+#include <pic.h>
 #include <serial.h>
 
 
@@ -9,7 +10,7 @@ pcb_t * last_process;
 uint32_t prev_jiffies;
 pid_t curr_pid;
 // Whenever interrupt/exception/syscall(which is soft exception) happens, we should store the context from previous process in here, so that scheduler can use it
-register_t * saved_context;
+register_t saved_context;
 
 pid_t allocate_pid() {
     return curr_pid++;
@@ -41,10 +42,12 @@ void context_switch(register_t * p_regs, context_t * n_regs) {
         switch_page_directory((page_directory_t*)n_regs->cr3, 1);
     }
     // Load regs(memory) to the real registers
-    if(current_process->state == TASK_CREATED || current_process->state == TASK_LOADING)
-        kernel_regs_switch(n_regs);
-    else if(current_process->state == TASK_RUNNING)
-        user_regs_switch(n_regs);
+    irq_ack(0);
+    last_process = current_process;
+    user_regs_switch(n_regs);
+    //if(current_process->state == TASK_CREATED || current_process->state == TASK_LOADING)
+    //    kernel_regs_switch(n_regs);
+    //else if(current_process->state == TASK_RUNNING)
 }
 
 
@@ -81,7 +84,8 @@ void schedule() {
     current_process = next;
     if(current_process == NULL)
         PANIC("no process left, did you exit all user process ??? Never exit the userspace init process!!!!");
-    context_switch(saved_context, &next->regs);
+    qemu_printf("Scheduler chose %s to run at 0x%08x\n", current_process->filename, current_process->regs.eip);
+    context_switch(&saved_context, &next->regs);
 }
 
 
@@ -114,6 +118,34 @@ void create_process(char * filename) {
     asm volatile("mov $1, %eax");
     asm volatile("int $0x80");
 }
+
+/*
+ * Create a new process, load a program from filesystem and run it
+ * */
+void create_process_from_routine(void * routine, char * name) {
+    pcb_t * p1 = kcalloc(sizeof(pcb_t), 1);
+    p1->pid = allocate_pid();
+    p1->regs.eip = (uint32_t)routine;
+    p1->regs.eflags = 0x206; // enable interrupt
+    strcpy(p1->filename, name);
+
+    // 4kb initial stack
+    p1->regs.esp = 0xC0000000;
+
+    // Create an address space for the process, how ?
+    // kmalloc a page directory for the process, then copy the entire kernel page dirs and tables(the frames don't have to be copied though)
+    p1->page_dir = kmalloc_a(sizeof(page_directory_t));
+    memset(p1->page_dir, 0, sizeof(page_directory_t));
+    copy_page_directory(p1->page_dir, kpage_dir);
+     allocate_region(p1->page_dir, 0xC0000000 - 4 * PAGE_SIZE, 0xC0000000, 0, 0, 1);
+    p1->regs.cr3 = (uint32_t)virtual2phys(kpage_dir, p1->page_dir);
+    p1->state = TASK_CREATED;
+    if(!current_process)
+        current_process = p1;
+    p1->self = list_insert_front(process_list, p1);
+    qemu_printf("%s created\n", name);
+}
+
 /*
  * Init process scheduler
  * */

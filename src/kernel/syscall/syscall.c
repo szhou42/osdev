@@ -3,6 +3,8 @@
 void * syscall_table[NUM_SYSCALLS] = {
     vfs_create_file,
     schedule,
+    qemu_printf,
+    create_process_from_routine,
     _exit
 };
 

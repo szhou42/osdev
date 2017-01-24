@@ -15,9 +15,9 @@ user_regs_switch:
     mov esi, [ebp + 24]
     mov edi, [ebp + 28]
     ; load eflags
-    mov eax, [ebp + 32]
-    push eax
-    popfd
+    ;mov eax, [ebp + 32]
+    ;push eax
+    ;popfd
     ; Right now, eax, ebp, esp are not restored yet
 
     ; Enter usermode from here(make sure the registers are restored correctly for the user process !)
@@ -31,7 +31,9 @@ user_regs_switch:
     ; Push user esp
     mov eax, [ebp + 16]
     push eax
-    pushfd
+    mov eax, [ebp + 32]
+    push eax
+    ;pushfd
     push 0x1b
     ; Push eip
     mov eax, [ebp + 40]
@@ -42,7 +44,7 @@ user_regs_switch:
     mov eax, [ebp + 0]
     ; Now, restore ebp
     mov ebp, [ebp + 20]
-    sti
+    ; sti
     iret
 
 kernel_regs_switch:
