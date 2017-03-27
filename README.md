@@ -10,7 +10,8 @@ Summer 2017 goals:
 
 # How to run and test simpleos kernel
 ## Preparation(Ubuntu14.04 is a recommended environment for compiling and running simpleos)
-Simpleos use elf-i686-gcc as cross-compiler, please build the cross compiler on your system first.
+Simpleos use elf-i686-gcc as cross-compiler, please build the cross compiler on your system first.  
+Remember to replace "CC=i686-pc-btos-gcc" in Makefile with your cross compiler.
 
 <a href = "http://wiki.osdev.org/GCC_Cross-Compiler">How to build a cross compiler</a>  
 Or, a rewritten/translated version of the above wiki article in Simplified Chinese  
