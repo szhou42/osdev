@@ -1,12 +1,11 @@
 # simpleos
 A toy operating system based on <a href = "http://www.osdever.net/bkerndev/Docs/title.htm"> Brans' Kernel Development Tutorial</a>  
-Current goals of this project is to build operating system with minimal support for the following:  
-1. Memory manager(from virtual page allocation to kmalloc) [Done]  
-2. File system(Hard disk driver, Support ext2, and virtual filesystem) [Done]  
-3. Graphical User Interface  
-4. Premptive multitasking  
-5. Network(TCP, UDP, HTTP)  
-7. User apps(File browser, downloader, editor and etc)
+
+Summer 2017 goals:  
+1. Userspace, Port Newlib, Multi-process, multi-thread, IPC, write syscalls, etc(process related stuff)
+2. Implement a hobby level TCP/IP stack(Ethernet/ARP/DHCP/IP/UDP/TCP with congestion control and everything..)
+3. Graphical User Interface(C/S GUI Server, Composite via IPC)
+7. Write three GUI user apps(Shell, TCP ChatRoom, Text Editor)
 
 
 # How to run and test simpleos kernel
