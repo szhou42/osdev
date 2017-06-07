@@ -2,10 +2,7 @@
 A toy operating system based on <a href = "http://www.osdever.net/bkerndev/Docs/title.htm"> Brans' Kernel Development Tutorial</a>  
 <a href = "https://www.youtube.com/watch?v=846d4m0wHQo"> Click me to see the video demo! </a>  
 
-
-The total time I have committed into making this os may be over half a year, starting from June in Summer Holiday at 2016, then working on coding a basic GUI for simpleos as a class project for a month(CS242 at UIUC), and then greatly improved the GUI appearance in Winter Holiday at 2016.  
-It is not very likely that I would have time to work on simpleos in near future(sad), when i got time, may be after graduation, i will work on the following things:
-
+Futuer goals:
 1. Userspace, Port Newlib, Multi-process, multi-thread, IPC, write syscalls, etc(process related stuff)
 2. Implement a hobby level TCP/IP stack(Ethernet/ARP/DHCP/IP/UDP/TCP with congestion control and everything..)
 3. Graphical User Interface(C/S GUI Server, Composite via IPC, now the GUI is in kernel)
