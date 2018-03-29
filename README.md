@@ -1,5 +1,5 @@
-# simpleos
-A toy operating system based on <a href = "http://www.osdever.net/bkerndev/Docs/title.htm"> Brans' Kernel Development Tutorial</a>  
+# Cool OS
+An operating system based on <a href = "http://www.osdever.net/bkerndev/Docs/title.htm"> Brans' Kernel Development Tutorial</a>  
 <a href = "https://www.youtube.com/watch?v=846d4m0wHQo"> Click me to see the video demo! </a>  
 
 Futuer goals:
@@ -8,7 +8,7 @@ Futuer goals:
 3. Graphical User Interface(C/S GUI Server, Composite via IPC, now the GUI is in kernel)
 4. Write three GUI user apps(Shell, TCP ChatRoom, Text Editor)
 
-# How to run and test simpleos kernel
+# How to run and test Cool OS kernel
 ## Preparation(Ubuntu14.04 is a recommended environment for compiling and running simpleos)
 Simpleos use elf-i686-gcc as cross-compiler, please build the cross compiler on your system first.  
 Remember to replace "CC=i686-pc-btos-gcc" in Makefile with your cross compiler.
@@ -48,11 +48,11 @@ Now run the following script to compile the kernel
 ./compile.sh
 ```
 
-And then choose one of the following simulator to boot simpleos. QEMU is more recommended.
+And then choose one of the following simulator to boot cool os. QEMU is more recommended.
 
 ## QEMU
 1.  Run sudo apt-get install qemu-system
-2.  Run ./qemu_run.sh to boot simpleos(or ./kvm.sh if your environment supports kvm)
+2.  Run ./qemu_run.sh to boot cool os(or ./kvm.sh if your environment supports kvm)
 
 
 ### Debug with QEMU
