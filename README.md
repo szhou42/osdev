@@ -8,6 +8,15 @@ Futuer goals:
 3. Graphical User Interface(C/S GUI Server, Composite via IPC, now the GUI is in kernel)
 4. Write three GUI user apps(Shell, TCP ChatRoom, Text Editor)
 
+# Screenshots  
+![Alt text](/os_screenshots/ss15.png?raw=true "ss15")
+![Alt text](/os_screenshots/ss12.png?raw=true "ss12")
+![Alt text](/os_screenshots/ss0.png?raw=true "ss0")
+![Alt text](/os_screenshots/ss1.png?raw=true "ss1")
+
+
+
+
 # How to run and test Cool OS kernel
 ## Preparation(Ubuntu14.04 is a recommended environment for compiling and running simpleos)
 Simpleos use elf-i686-gcc as cross-compiler, please build the cross compiler on your system first.  
