@@ -107,6 +107,3 @@ And then choose one of the following simulator to boot cool os. QEMU is more rec
 &#160; &#160; &#160; &#160;4 DHCP                   [✔]  
 &#160; &#160; &#160; &#160;5 TCP                    []  
 &#160; &#160; &#160; &#160;6 HTTP                   []  
-
-# Screenshots  
-![Alt text](/os_screenshots/ss15.png?raw=true "ss15")
