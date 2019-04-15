@@ -2,7 +2,7 @@
 An operating system based on <a href = "http://www.osdever.net/bkerndev/Docs/title.htm"> Brans' Kernel Development Tutorial</a>  
 <a href = "https://www.youtube.com/watch?v=846d4m0wHQo"> Click me to see the video demo! </a>  
 
-Futuer goals:
+Future goals:
 1. Userspace, Port Newlib, Multi-process, multi-thread, IPC, write syscalls, etc(process related stuff)
 2. Implement a hobby level TCP/IP stack(Ethernet/ARP/DHCP/IP/UDP/TCP with congestion control and everything..)
 3. Graphical User Interface(C/S GUI Server, Composite via IPC, now the GUI is in kernel)
