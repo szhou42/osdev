@@ -10,7 +10,6 @@ Future goals:
 
 # Screenshots  
 ![Alt text](/os_screenshots/ss15.png?raw=true "ss15")
-![Alt text](/os_screenshots/ss12.png?raw=true "ss12")
 ![Alt text](/os_screenshots/ss0.png?raw=true "ss0")
 ![Alt text](/os_screenshots/ss1.png?raw=true "ss1")
 
