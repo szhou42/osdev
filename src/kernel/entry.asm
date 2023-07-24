@@ -69,7 +69,7 @@ higher_half:
     extern kmain
     ; Upon entry to the os, the bootloader has put a pointer to multiboot information structure in ebx, we can pass it into our kmain(), but we may or may not need to use it
     push ebx
-    ; When control is transfer to the c code, we can throw away the old pageing directory structure and use our own, remember to clear pse bit in cr4 though :)
+    ; When control is transfer to the c code, we can throw away the old paging directory structure and use our own, remember to clear pse bit in cr4 though :)
     call kmain
 ; If kmain return, just keep looping...
 loop:
